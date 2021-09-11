@@ -24,7 +24,7 @@ scope = "integrated"
 
 strat_data = stratify(by = strat)
 
-firstYear = 1995
+firstYear = 2000
 lastYear = 2021
 
 #output_dir <- "G:/BBS_iCAR_route_trends/output"
@@ -444,7 +444,7 @@ slope_stanfit <- slope_model$sample(
 
 
 csv_files <- dir(output_dir,pattern = out_base,full.names = TRUE)
-
+csv_files <- csv_files[1:3]
 #slope_stanfit$save_object(file = paste0(output_dir,"/",out_base,"_gamye_iCAR.RDS"))
 
 
