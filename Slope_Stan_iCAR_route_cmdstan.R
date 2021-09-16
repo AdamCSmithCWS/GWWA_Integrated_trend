@@ -1052,63 +1052,63 @@ UC = 0.95
     print(tmap)
     dev.off()
     
-    
-    tmap2 = ggplot(route_map_out)+
-      geom_sf(data = strata_map,colour = gray(0.8),fill = NA)+
-      geom_sf(aes(colour = Tplot,size = abund))+
-      scale_colour_manual(values = map_palette, aesthetics = c("colour"),
-                          guide = guide_legend(reverse=TRUE),
-                          name = paste0(lgnd_head,firstYear,"-",lastYear))+
-      coord_sf(xlim = xlms,ylim = ylms)+
-      theme(legend.position = "none")+
-      labs(title = paste(species))
-    
-    maps2[[jj]] <- tmap2
-    
-    
-    
-    tmap3 = ggplot(route_map_out)+
-      geom_sf(data = strata_map,colour = gray(0.8),fill = NA)+
-      geom_sf(aes(colour = Tplot,size = 1/h_ci))+
-      scale_size_continuous(range = c(0.5,3))+
-      scale_colour_manual(values = map_palette, aesthetics = c("colour"),
-                          guide = guide_legend(reverse=TRUE),
-                          name = paste0(lgnd_head,firstYear,"-",lastYear))+
-      coord_sf(xlim = xlms,ylim = ylms)+
-      labs(title = paste(species))
-    
-    maps3[[jj]] <- tmap3
-    
-    
-    
-    
-    tmap_space = ggplot(route_map_out_space)+
-      geom_sf(data = strata_map,colour = gray(0.8),fill = NA)+
-      geom_sf(aes(colour = Tplot,size = abund))+
-      scale_colour_manual(values = map_palette, aesthetics = c("colour"),
-                          guide = guide_legend(reverse=TRUE),
-                          name = paste0(lgnd_head,firstYear,"-",lastYear))+
-      coord_sf(xlim = xlms,ylim = ylms)+
-      theme(legend.position = "none")+
-      labs(title = paste("spatial component"))
-    maps_space[[jj]] <- tmap_space
-    
-    
-    
-    
-    
-    tmap_rand = ggplot(route_map_out_rand)+
-      geom_sf(data = strata_map,colour = gray(0.8),fill = NA)+
-      geom_sf(aes(colour = Tplot,size = abund))+
-      scale_colour_manual(values = map_palette, aesthetics = c("colour"),
-                          guide = guide_legend(reverse=TRUE),
-                          name = paste0(lgnd_head,firstYear,"-",lastYear))+
-      coord_sf(xlim = xlms,ylim = ylms)+
-      theme(legend.position = "none")+
-      labs(title = paste("random component"))
-    
-    maps_rand[[jj]] <- tmap_rand
-    
+    # 
+    # tmap2 = ggplot(route_map_out)+
+    #   geom_sf(data = strata_map,colour = gray(0.8),fill = NA)+
+    #   geom_sf(aes(colour = Tplot,size = abund))+
+    #   scale_colour_manual(values = map_palette, aesthetics = c("colour"),
+    #                       guide = guide_legend(reverse=TRUE),
+    #                       name = paste0(lgnd_head,firstYear,"-",lastYear))+
+    #   coord_sf(xlim = xlms,ylim = ylms)+
+    #   theme(legend.position = "none")+
+    #   labs(title = paste(species))
+    # 
+    # maps2[[jj]] <- tmap2
+    # 
+    # 
+    # 
+    # tmap3 = ggplot(route_map_out)+
+    #   geom_sf(data = strata_map,colour = gray(0.8),fill = NA)+
+    #   geom_sf(aes(colour = Tplot,size = 1/h_ci))+
+    #   scale_size_continuous(range = c(0.5,3))+
+    #   scale_colour_manual(values = map_palette, aesthetics = c("colour"),
+    #                       guide = guide_legend(reverse=TRUE),
+    #                       name = paste0(lgnd_head,firstYear,"-",lastYear))+
+    #   coord_sf(xlim = xlms,ylim = ylms)+
+    #   labs(title = paste(species))
+    # 
+    # maps3[[jj]] <- tmap3
+    # 
+    # 
+    # 
+    # 
+    # tmap_space = ggplot(route_map_out_space)+
+    #   geom_sf(data = strata_map,colour = gray(0.8),fill = NA)+
+    #   geom_sf(aes(colour = Tplot,size = abund))+
+    #   scale_colour_manual(values = map_palette, aesthetics = c("colour"),
+    #                       guide = guide_legend(reverse=TRUE),
+    #                       name = paste0(lgnd_head,firstYear,"-",lastYear))+
+    #   coord_sf(xlim = xlms,ylim = ylms)+
+    #   theme(legend.position = "none")+
+    #   labs(title = paste("spatial component"))
+    # maps_space[[jj]] <- tmap_space
+    # 
+    # 
+    # 
+    # 
+    # 
+    # tmap_rand = ggplot(route_map_out_rand)+
+    #   geom_sf(data = strata_map,colour = gray(0.8),fill = NA)+
+    #   geom_sf(aes(colour = Tplot,size = abund))+
+    #   scale_colour_manual(values = map_palette, aesthetics = c("colour"),
+    #                       guide = guide_legend(reverse=TRUE),
+    #                       name = paste0(lgnd_head,firstYear,"-",lastYear))+
+    #   coord_sf(xlim = xlms,ylim = ylms)+
+    #   theme(legend.position = "none")+
+    #   labs(title = paste("random component"))
+    # 
+    # maps_rand[[jj]] <- tmap_rand
+    # 
     
     print(species)
     # write.csv(route_map_out,
