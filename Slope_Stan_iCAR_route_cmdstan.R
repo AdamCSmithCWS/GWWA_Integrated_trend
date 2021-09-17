@@ -194,11 +194,11 @@ gwwa_data <- site_centres_gwwa %>%
 # 
 
 
-strat_map_gwwa <- ggplot()+
-  geom_sf(data = gwwa_strats,alpha = 0)+
-  geom_sf_text(data = site_centres_gwwa,aes(label = site_orig,colour = site_orig))
-
-print(strat_map_gwwa)
+# strat_map_gwwa <- ggplot()+
+#   geom_sf(data = gwwa_strats,alpha = 0)+
+#   geom_sf_text(data = site_centres_gwwa,aes(label = site_orig,colour = site_orig))
+# 
+# print(strat_map_gwwa)
 
 # GWWA spatial neighbourhood define --------------------------------------------
 
@@ -329,6 +329,11 @@ site_centres <- bind_rows(site_centres_bbs,site_centres_gwwa) %>%
   mutate(site = as.integer(factor(site_orig)))
 
 
+# join site centres to BBS strata -----------------------------------------
+site_centres <- st_join(site_centres,
+                        strata_map,
+                        join = st_nearest_feature)
+
 ## returns the adjacency data necessary for the stan model
 ## also exports maps and saved data objects to plot_dir
 car_stan_dat <- neighbours_define(real_strata_map = site_centres,
@@ -344,14 +349,14 @@ car_stan_dat <- neighbours_define(real_strata_map = site_centres,
 
 site_list_temp <- site_centres %>% 
   as.data.frame() %>% 
-  select(site_orig,site)
+  select(site_orig,site,BCR,ST_12,AREA_1,PROVSTATE,COUNTRY)
 
 
 data_all <- data_all %>% 
   left_join(.,site_list_temp,by = c("site_orig"))
 site_list <- data_all %>% 
   as.data.frame() %>% 
-  select(site_orig,site,site_bbs,site_gwwa,survey) %>% 
+  select(site_orig,site,site_bbs,site_gwwa,survey,ST_12,BCR,COUNTRY) %>% 
   distinct() %>% 
   arrange(site)
 
@@ -428,9 +433,9 @@ out_base <- paste0(species_f,"_",scope,"_",firstYear)
 
 slope_stanfit <- slope_model$sample(
   data=stan_data,
-  refresh=25,
-  chains=3, iter_sampling=1000,
-  iter_warmup=1000,
+  refresh=200,
+  chains=3, iter_sampling=2000,
+  iter_warmup=2000,
   parallel_chains = 3,
   #pars = parms,
   adapt_delta = 0.8,
@@ -589,22 +594,21 @@ save(list = c("slope_stanfit",
 
 
 route_trajectories <- FALSE #set to FALSE to speed up mapping
+# 
+# maps = vector(mode = "list",length = 400)
+# maps2 = vector(mode = "list",length = 400)
+# 
+# maps3 = vector(mode = "list",length = 400)
+# 
+# maps_rand = vector(mode = "list",length = 400)
+# maps_space = vector(mode = "list",length = 400)
+# 
+# trends_out <- NULL
+# trends_out_space <- NULL
+# trends_out_rand <- NULL
+# sdbeta_dif <- NULL
+# sdbeta_space_rand <- NULL
 
-maps = vector(mode = "list",length = 400)
-maps2 = vector(mode = "list",length = 400)
-
-maps3 = vector(mode = "list",length = 400)
-
-maps_rand = vector(mode = "list",length = 400)
-maps_space = vector(mode = "list",length = 400)
-
-trends_out <- NULL
-trends_out_space <- NULL
-trends_out_rand <- NULL
-sdbeta_dif <- NULL
-sdbeta_space_rand <- NULL
-
-jj <- 0
 
 LC = 0.05
 UC = 0.95
@@ -621,9 +625,9 @@ UC = 0.95
     # }
 
     ### may be removed after re-running     launch_shinystan(slope_stanfit)
-    sl_rstan <- rstan::read_stan_csv(csv_files)
+    #sl_rstan <- rstan::read_stan_csv(csv_files)
     #launch_shinystan(as.shinystan(sl_rstan))
-    
+    sl_rstan <- slope_stanfit
      ####
     # add trend and abundance ----------------------------------------
     
@@ -772,8 +776,11 @@ UC = 0.95
                 sd = sd((dif))) %>% 
       mutate(species = species)
     
-    sdbeta_dif <- bind_rows(sdbeta_dif,sdbeta_tmp_dif)
+   
     
+    
+    
+    route_trajectories <- TRUE
     
     
     # Route-level trajectories ------------------------------------------------
@@ -781,110 +788,189 @@ UC = 0.95
       
       
       
-      sdnoise_samples = posterior_samples(sl_rstan,"sdnoise")%>% 
-        ungroup() %>% 
-        select(.draw,.value) %>% 
-        rename(sdnoise = .value)
-      
-      sdobs_samples = posterior_samples(sl_rstan,"sdobs")%>% 
-        ungroup() %>% 
-        select(.draw,.value) %>% 
-        rename(sdobs = .value)
+      n_samples <- posterior_samples(sl_rstan,
+                                                   "indices",
+                                     dims = c("site","y"))
       
       
-      beta_samples <- beta_samples %>% 
-        ungroup() %>% 
-        select(s,.draw,.value) %>% 
-        rename(beta = .value)
-      
-      alpha_samples <- alpha_samples %>% 
-        ungroup() %>% 
-        select(s,.draw,.value) %>% 
-        rename(alpha = .value)
-      
-      ab_samples <- inner_join(beta_samples,alpha_samples)
-      
-      ab_samples <- ab_samples %>% 
-        left_join(.,sdnoise_samples,by = ".draw") %>% 
-        left_join(.,sdobs_samples,by = ".draw")
+      n_samples_t <- n_samples %>% 
+        left_join(site_list,by = "site") %>% 
+        mutate(year = y+(firstYear-1))
       
       
-      nyears = stan_data$nyears
-      fixedyear = stan_data$fixedyear
-      YEARS = c(min(jags_data$r_year):max(jags_data$r_year))
-      
-      if(length(YEARS) != nyears){stop("years don't match YEARS =",length(YEARS),"nyears =",nyears)}
-      
-      ind_fxn = function(a,b,sdn,sdob,y,fy){
-        i = exp(a + b*(y-fy) + (0.5*(sdn^2))+ (0.5*(sdob^2)))
-        return(i)
-      }
-      
-      ### this could be simplified to just estimate the start and end-years
-      i_samples = NULL
-      for(yr in 1:nyears){
-        i_t = ab_samples %>% 
-          mutate(i = ind_fxn(alpha,beta,sdnoise,sdobs,yr,fixedyear),
-                 y = yr,
-                 year = YEARS[yr])
-        i_samples <- bind_rows(i_samples,i_t)
-      }
-      
-      ### this could be tweaked to sum across all routes in the original strata
-      ### just join to the strata-route dataframe - route_map
-      ### then add the non-zero-weights for the strata
-      ### then add the area-weights for the strata
-      ### and change the group-by value
-      indices = i_samples %>% group_by(s,y,year) %>% 
-        summarise(index = mean(i),
-                  lci_i = quantile(i,LC),
-                  uci_i = quantile(i,UC),
-                  sd_i = sd(i),
+      BCR_indices <- n_samples_t %>% 
+        group_by(.draw,BCR,year) %>% 
+        summarise(comp_ind = mean(.value),
+                  .groups = "drop") %>% 
+        group_by(BCR,year) %>% 
+        summarise(ind = median(comp_ind),
+                  lci = quantile(comp_ind,0.025),
+                  uci = quantile(comp_ind,0.975),
                   .groups = "keep")
       
-      raw = data.frame(s = stan_data$route,
-                       y = stan_data$year,
-                       count = stan_data$count,
-                       obs = stan_data$observer)
-      indices = left_join(indices,raw,by = c("y","s"))
-      
-      rts = route_map %>% tibble() %>% 
-        select(route,site,strat) %>% 
-        mutate(s = site) 
+      bcr_plot <- ggplot(data = BCR_indices,aes(x = year, y = ind))+
+        geom_ribbon(aes(ymin = lci,ymax = uci),alpha = 0.2)+
+        geom_line()+
+        facet_wrap(~BCR,nrow = 4)
       
       
-      indices = left_join(indices,rts,by = "s")
-      indices$obs <- factor(indices$obs)
-      nroutes = stan_data$nroutes
+      print(bcr_plot)
       
-      # setting up the plot dimensions
-      npg = ceiling(nroutes/9)
-      ncl = 3
-      nrw = 3
-      if(npg*9-nroutes < 3){
-        nrw = 2
-        npg = ceiling(nroutes/6) 
-        if(npg*6-nroutes < 3){
-          ncl = 2
-          npg = ceiling(nroutes/4)  
+      posterior_trends <- function(n_samples = n_samples_t,
+                                   startyear = firstYear,
+                                   endyear = lastYear,
+                                   region = "BCR",
+                                   lq = 0.025,
+                                   uq = 0.975){
+        
+        texp <- function(x,ny = 10){
+          (x^(1/ny)-1)*100
         }
+        
+        
+        
+        
+        chng <- function(x){
+          (x-1)*100
+        }
+        
+        prob_dec <- function(ch,thresh){
+          
+          length(which(ch < thresh))/length(ch)
+        }
+        
+        
+        nyrs <- endyear-startyear
+        
+        syr = paste(startyear)
+        eyr = paste(endyear)
+        out_trends <- n_samples %>% 
+          rename_with(~gsub(pattern = region,replacement = "region",.x,fixed = TRUE))  %>% 
+          filter(year %in% c(startyear,endyear)) %>% 
+          group_by(.draw,region,year) %>% 
+          summarise(comp_ind = mean(.value),
+                    .groups = "drop") %>%  
+          pivot_wider(names_from = year,
+                      values_from = comp_ind) %>%
+          rename_with(~gsub(syr,"startyear",.x,fixed = TRUE)) %>% 
+          rename_with(~gsub(eyr,"endyear",.x,fixed = TRUE)) %>% 
+          group_by(region,.draw) %>% 
+          summarise(t = texp(endyear/startyear,ny = nyrs),
+                    ch = chng(endyear/startyear),
+                    .groups = "drop") %>% 
+          group_by(region) %>% 
+          summarise(trend = mean(t),
+                    lci = quantile(t,lq,names = FALSE),
+                    uci = quantile(t,uq,names = FALSE),
+                    percent_change = median(ch),
+                    p_ch_lci = quantile(ch,lq,names = FALSE),
+                    p_ch_uci = quantile(ch,uq,names = FALSE),
+                    prob_decline = prob_dec(ch,0),
+                    prob_decline_GT30 = prob_dec(ch,-30),
+                    prob_decline_GT50 = prob_dec(ch,-50),
+                    prob_decline_GT70 = prob_dec(ch,-70),
+                    .groups = "keep") %>% 
+          rename_with(~gsub(pattern = "region",replacement = region,.x,fixed = TRUE))
+        
       }
-      #### 
-      pdf(paste0("trajectories/",species,"_route_trajectories2.pdf"),
-          width = 11,
-          height = 8.5)
       
-      for(j in 1:npg){
-        traj = ggplot(data = indices,aes(x = year,y = index,colour = strat))+
-          geom_ribbon(aes(ymin = lci_i,ymax = uci_i),alpha = 0.4,fill = grey(0.5))+
-          geom_line()+
-          geom_point(aes(x = year,y = count, colour = obs), fill = grey(0.5),alpha = 0.5,inherit.aes = FALSE)+
-          facet_wrap_paginate(~ strat+route,scales = "free",ncol = ncl,nrow = nrw,page = j)+
-          theme(legend.position = "none")
-        try(print(traj),silent = TRUE)
-      }
-      dev.off()
+      BCR_trends <- posterior_trends()
       
+      strata_trends <- posterior_trends(region = "ST_12") 
+      
+      
+      
+      
+      
+      
+      
+      
+      # 
+      # 
+      # 
+      # 
+      # 
+      # 
+      # 
+      # 
+      # 
+      # 
+      # nyears = stan_data$nyears
+      # fixedyear = stan_data$fixedyear
+      # YEARS = c(min(jags_data$r_year):max(jags_data$r_year))
+      # 
+      # if(length(YEARS) != nyears){stop("years don't match YEARS =",length(YEARS),"nyears =",nyears)}
+      # 
+      # ind_fxn = function(a,b,sdn,sdob,y,fy){
+      #   i = exp(a + b*(y-fy) + (0.5*(sdn^2))+ (0.5*(sdob^2)))
+      #   return(i)
+      # }
+      # 
+      # ### this could be simplified to just estimate the start and end-years
+      # i_samples = NULL
+      # for(yr in 1:nyears){
+      #   i_t = ab_samples %>% 
+      #     mutate(i = ind_fxn(alpha,beta,sdnoise,sdobs,yr,fixedyear),
+      #            y = yr,
+      #            year = YEARS[yr])
+      #   i_samples <- bind_rows(i_samples,i_t)
+      # }
+      # 
+      # ### this could be tweaked to sum across all routes in the original strata
+      # ### just join to the strata-route dataframe - route_map
+      # ### then add the non-zero-weights for the strata
+      # ### then add the area-weights for the strata
+      # ### and change the group-by value
+      # indices = i_samples %>% group_by(s,y,year) %>% 
+      #   summarise(index = mean(i),
+      #             lci_i = quantile(i,LC),
+      #             uci_i = quantile(i,UC),
+      #             sd_i = sd(i),
+      #             .groups = "keep")
+      # 
+      # raw = data.frame(s = stan_data$route,
+      #                  y = stan_data$year,
+      #                  count = stan_data$count,
+      #                  obs = stan_data$observer)
+      # indices = left_join(indices,raw,by = c("y","s"))
+      # 
+      # rts = route_map %>% tibble() %>% 
+      #   select(route,site,strat) %>% 
+      #   mutate(s = site) 
+      # 
+      # 
+      # indices = left_join(indices,rts,by = "s")
+      # indices$obs <- factor(indices$obs)
+      # nroutes = stan_data$nroutes
+      # 
+      # # setting up the plot dimensions
+      # npg = ceiling(nroutes/9)
+      # ncl = 3
+      # nrw = 3
+      # if(npg*9-nroutes < 3){
+      #   nrw = 2
+      #   npg = ceiling(nroutes/6) 
+      #   if(npg*6-nroutes < 3){
+      #     ncl = 2
+      #     npg = ceiling(nroutes/4)  
+      #   }
+      # }
+      # #### 
+      # pdf(paste0("trajectories/",species,"_route_trajectories2.pdf"),
+      #     width = 11,
+      #     height = 8.5)
+      # 
+      # for(j in 1:npg){
+      #   traj = ggplot(data = indices,aes(x = year,y = index,colour = strat))+
+      #     geom_ribbon(aes(ymin = lci_i,ymax = uci_i),alpha = 0.4,fill = grey(0.5))+
+      #     geom_line()+
+      #     geom_point(aes(x = year,y = count, colour = obs), fill = grey(0.5),alpha = 0.5,inherit.aes = FALSE)+
+      #     facet_wrap_paginate(~ strat+route,scales = "free",ncol = ncl,nrow = nrw,page = j)+
+      #     theme(legend.position = "none")
+      #   try(print(traj),silent = TRUE)
+      # }
+      # dev.off()
+      # 
       
       
     }
@@ -1029,13 +1115,18 @@ UC = 0.95
                      "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695")
     names(map_palette) <- labls
     
+    route_map_out <- route_map_out %>% 
+      mutate(survey = ifelse(is.na(site_gwwa),"BBS","GWWA"),
+             log_abund = log(abund),
+             rel_abund = abund-mean(abund))
     
     tmap = ggplot(route_map_out)+
       #geom_sf(data = realized_strata_map,colour = gray(0.8),fill = NA)+
       geom_sf(data = strata_map,colour = gray(0.8),fill = NA)+
-      geom_sf(aes(colour = Tplot,size = abund))+
-      scale_size_continuous(range = c(0.5,3),
-                            name = "Mean abundance")+
+      geom_sf(aes(colour = Tplot,size = abund,shape = survey))+
+      scale_size_continuous(range = c(0.5,2.5),
+                            name = "Relative abundance",
+                            trans = "log10")+
       scale_colour_manual(values = map_palette, aesthetics = c("colour"),
                           guide = guide_legend(reverse=TRUE),
                           name = paste0(lgnd_head,firstYear,"-",lastYear))+
