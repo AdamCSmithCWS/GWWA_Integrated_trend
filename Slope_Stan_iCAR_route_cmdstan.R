@@ -24,7 +24,7 @@ scope = "integrated"
 
 strat_data = stratify(by = strat)
 
-firstYear = 2000
+firstYear = 2004
 lastYear = 2021
 
 #output_dir <- "G:/BBS_iCAR_route_trends/output"
@@ -878,8 +878,12 @@ UC = 0.95
       
       strata_trends <- posterior_trends(region = "ST_12") 
       
+      survey_trends <- posterior_trends(region = "survey") 
       
       
+      trends_out <- bind_rows(survey_trends,BCR_trends)
+      write.csv(trends_out,paste0("trends/survey_and_bcr_trends",species_f,"_",firstYear,".csv"),
+                row.names = FALSE)
       
       
       
