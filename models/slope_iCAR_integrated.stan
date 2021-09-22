@@ -58,7 +58,7 @@ parameters {
   vector[nsites] beta_raw_rand;
   real BETA; 
 
-  vector[nsites] alpha_raw;  //site-level abundance for bbs
+  vector[nsites] alpha_raw;  //route/quad-level abundance 
   real ALPHA_bbs; 
   real ALPHA_gwwa; 
 
@@ -70,8 +70,8 @@ parameters {
   real<lower=0> sdnoise_gwwa;    // scale of over-dispersion for GWWA counts
  //real<lower=1> nu;  //optional heavy-tail df for t-distribution
   real<lower=0> sdobs;    // sd of observer effects
-  real<lower=0> sdbeta_space;    // sd of slopes 
-  real<lower=0> sdbeta_rand;    // sd of slopes 
+  real<lower=0> sdbeta_space;    // sd of slopes in space 
+  real<lower=0> sdbeta_rand;    // sd of slopes random
   real<lower=0> sdalpha;    // sd of intercepts
 
   
@@ -94,7 +94,7 @@ transformed parameters{
    beta_rand = (sdbeta_rand*beta_raw_rand);
    
    beta = beta_space + beta_rand + BETA;
-   alpha = (sdalpha*alpha_raw);
+   alpha = (sdalpha*alpha_raw);// + ALPHA;
    obs = sdobs*obs_raw;
 
 // if statement to allow each count to be modeled by either BBS parameters or GWWA parameters
@@ -103,7 +103,7 @@ transformed parameters{
   for(i in 1:ncounts){
     if(survey[i]){
    real noise = sdnoise_bbs*noise_raw_bbs[inds_bbs[i]];
-   E[i] =  beta[site[i]] * (year[i]-fixedyear) + ALPHA_bbs + alpha[site[i]] + obs[observer[i]] + eta*firstyr[i] + noise;
+   E[i] =  beta[site[i]] * (year[i]-fixedyear) + ALPHA_bbs +  alpha[site[i]] + offset[i] + obs[observer[i]] + eta*firstyr[i] + noise;
     }
 else    {
    real noise = sdnoise_gwwa*noise_raw_gwwa[inds_gwwa[i]];

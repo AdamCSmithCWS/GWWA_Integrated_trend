@@ -304,11 +304,13 @@ bbs_merge <- bbs_data %>%
   select(count,YEAR,route,obser,firstyr,survey,site_bbs) %>% 
   rename(site_orig = route) %>% 
   mutate(inds_bbs = 1:nrow(bbs_data),
-         offset = 0,
+         offset = log(50),
          inds_gwwa = 0,
          site_gwwa = 1)
 
-
+## offset is set to a proportion of the designed number of counts
+## this should help to estimate the GWWA intercept, which is currently very small
+## if the offset scales the values to individual counts
 gwwa_merge <- gwwa_data %>% 
   select(count,YEAR,site_orig,survey,site_gwwa,n_survey) %>% 
   rename(offset = n_survey) %>% 
@@ -434,12 +436,12 @@ out_base <- paste0(species_f,"_",scope,"_",firstYear)
 slope_stanfit <- slope_model$sample(
   data=stan_data,
   refresh=200,
-  chains=3, iter_sampling=2000,
-  iter_warmup=2000,
+  chains=3, iter_sampling=3000,
+  iter_warmup=4000,
   parallel_chains = 3,
   #pars = parms,
   adapt_delta = 0.8,
-  max_treedepth = 14,
+  max_treedepth = 15,
   seed = 123,
   init = init_def,
   output_dir = output_dir,
@@ -454,12 +456,12 @@ csv_files <- csv_files[1:3]
 
 
 
-shiny_explore <- FALSE
+shiny_explore <- TRUE
 if(shiny_explore){
   sl_rstan <- rstan::read_stan_csv(csv_files)
   shinystan::launch_shinystan(shinystan::as.shinystan(sl_rstan))
   
-  loo_stan = loo(sl_rstan)
+  #loo_stan = loo(sl_rstan)
 }
 
 
@@ -623,10 +625,15 @@ UC = 0.95
     #   
     # #csv_files <- dir(output_dir,pattern = out_base,full.names = TRUE)
     # }
-
+shinycheck <- TRUE
+    if(shinycheck){
     ### may be removed after re-running     launch_shinystan(slope_stanfit)
-    #sl_rstan <- rstan::read_stan_csv(csv_files)
-    #launch_shinystan(as.shinystan(sl_rstan))
+    sl_rstan1 <- rstan::read_stan_csv(csv_files)
+    launch_shinystan(as.shinystan(sl_rstan1))
+    ###
+    }
+
+
     sl_rstan <- slope_stanfit
      ####
     # add trend and abundance ----------------------------------------
@@ -872,6 +879,8 @@ UC = 0.95
                     .groups = "keep") %>% 
           rename_with(~gsub(pattern = "region",replacement = region,.x,fixed = TRUE))
         
+        
+        return(out_trends)
       }
       
       BCR_trends <- posterior_trends()
@@ -1146,6 +1155,13 @@ UC = 0.95
         units = "cm")
     print(tmap)
     dev.off()
+    
+    
+    abunddist <- ggplot(data = route_map_out,aes(x = abund))+
+      geom_histogram()+
+      facet_wrap(~survey,nrow = 1)
+    
+    print(abunddist)
     
     # 
     # tmap2 = ggplot(route_map_out)+
