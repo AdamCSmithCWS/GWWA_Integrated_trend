@@ -24,7 +24,7 @@ scope = "integrated"
 
 strat_data = stratify(by = strat)
 
-firstYear = 2004
+firstYear = 2010
 lastYear = 2021
 
 #output_dir <- "G:/BBS_iCAR_route_trends/output"
@@ -456,7 +456,7 @@ csv_files <- csv_files[1:3]
 
 
 
-shiny_explore <- TRUE
+shiny_explore <- FALSE
 if(shiny_explore){
   sl_rstan <- rstan::read_stan_csv(csv_files)
   shinystan::launch_shinystan(shinystan::as.shinystan(sl_rstan))
@@ -625,7 +625,7 @@ UC = 0.95
     #   
     # #csv_files <- dir(output_dir,pattern = out_base,full.names = TRUE)
     # }
-shinycheck <- TRUE
+shinycheck <- FALSE
     if(shinycheck){
     ### may be removed after re-running     launch_shinystan(slope_stanfit)
     sl_rstan1 <- rstan::read_stan_csv(csv_files)
@@ -885,7 +885,7 @@ shinycheck <- TRUE
       
       BCR_trends <- posterior_trends()
       
-      strata_trends <- posterior_trends(region = "ST_12") 
+      #strata_trends <- posterior_trends(region = "ST_12") 
       
       survey_trends <- posterior_trends(region = "survey") 
       
@@ -897,94 +897,7 @@ shinycheck <- TRUE
       
       
       
-      
-      # 
-      # 
-      # 
-      # 
-      # 
-      # 
-      # 
-      # 
-      # 
-      # 
-      # nyears = stan_data$nyears
-      # fixedyear = stan_data$fixedyear
-      # YEARS = c(min(jags_data$r_year):max(jags_data$r_year))
-      # 
-      # if(length(YEARS) != nyears){stop("years don't match YEARS =",length(YEARS),"nyears =",nyears)}
-      # 
-      # ind_fxn = function(a,b,sdn,sdob,y,fy){
-      #   i = exp(a + b*(y-fy) + (0.5*(sdn^2))+ (0.5*(sdob^2)))
-      #   return(i)
-      # }
-      # 
-      # ### this could be simplified to just estimate the start and end-years
-      # i_samples = NULL
-      # for(yr in 1:nyears){
-      #   i_t = ab_samples %>% 
-      #     mutate(i = ind_fxn(alpha,beta,sdnoise,sdobs,yr,fixedyear),
-      #            y = yr,
-      #            year = YEARS[yr])
-      #   i_samples <- bind_rows(i_samples,i_t)
-      # }
-      # 
-      # ### this could be tweaked to sum across all routes in the original strata
-      # ### just join to the strata-route dataframe - route_map
-      # ### then add the non-zero-weights for the strata
-      # ### then add the area-weights for the strata
-      # ### and change the group-by value
-      # indices = i_samples %>% group_by(s,y,year) %>% 
-      #   summarise(index = mean(i),
-      #             lci_i = quantile(i,LC),
-      #             uci_i = quantile(i,UC),
-      #             sd_i = sd(i),
-      #             .groups = "keep")
-      # 
-      # raw = data.frame(s = stan_data$route,
-      #                  y = stan_data$year,
-      #                  count = stan_data$count,
-      #                  obs = stan_data$observer)
-      # indices = left_join(indices,raw,by = c("y","s"))
-      # 
-      # rts = route_map %>% tibble() %>% 
-      #   select(route,site,strat) %>% 
-      #   mutate(s = site) 
-      # 
-      # 
-      # indices = left_join(indices,rts,by = "s")
-      # indices$obs <- factor(indices$obs)
-      # nroutes = stan_data$nroutes
-      # 
-      # # setting up the plot dimensions
-      # npg = ceiling(nroutes/9)
-      # ncl = 3
-      # nrw = 3
-      # if(npg*9-nroutes < 3){
-      #   nrw = 2
-      #   npg = ceiling(nroutes/6) 
-      #   if(npg*6-nroutes < 3){
-      #     ncl = 2
-      #     npg = ceiling(nroutes/4)  
-      #   }
-      # }
-      # #### 
-      # pdf(paste0("trajectories/",species,"_route_trajectories2.pdf"),
-      #     width = 11,
-      #     height = 8.5)
-      # 
-      # for(j in 1:npg){
-      #   traj = ggplot(data = indices,aes(x = year,y = index,colour = strat))+
-      #     geom_ribbon(aes(ymin = lci_i,ymax = uci_i),alpha = 0.4,fill = grey(0.5))+
-      #     geom_line()+
-      #     geom_point(aes(x = year,y = count, colour = obs), fill = grey(0.5),alpha = 0.5,inherit.aes = FALSE)+
-      #     facet_wrap_paginate(~ strat+route,scales = "free",ncol = ncl,nrow = nrw,page = j)+
-      #     theme(legend.position = "none")
-      #   try(print(traj),silent = TRUE)
-      # }
-      # dev.off()
-      # 
-      
+     
       
     }
     
@@ -1058,28 +971,17 @@ shinycheck <- TRUE
     route_map_out = left_join(site_centres,slops_int,by = "site")
     route_map_out$species <- species
     
-    trends_out <- bind_rows(trends_out,route_map_out)
-    
-    
+
     
     route_map_out_rand = left_join(site_centres,slops_rand_int,by = "site")
     route_map_out_rand$species <- species
     
-    trends_out_rand <- bind_rows(trends_out_rand,route_map_out_rand)
-    
-    # slopes_rand_full_int
-    # route_map_out_rand = left_join(site_centres,slopes_rand_full_int,by = "site")
-    # route_map_out_rand$species <- species
-    # 
-    # trends_out_rand <- bind_rows(trends_out_rand,route_map_out_rand)
-    
-    
+
     
     route_map_out_space = left_join(site_centres,slops_space_int,by = "site")
     route_map_out_space$species <- species
     
-    trends_out_space <- bind_rows(trends_out_space,route_map_out_space)
-    
+  
     
     
     ### setting up boundaries for plots
@@ -1163,226 +1065,8 @@ shinycheck <- TRUE
     
     print(abunddist)
     
-    # 
-    # tmap2 = ggplot(route_map_out)+
-    #   geom_sf(data = strata_map,colour = gray(0.8),fill = NA)+
-    #   geom_sf(aes(colour = Tplot,size = abund))+
-    #   scale_colour_manual(values = map_palette, aesthetics = c("colour"),
-    #                       guide = guide_legend(reverse=TRUE),
-    #                       name = paste0(lgnd_head,firstYear,"-",lastYear))+
-    #   coord_sf(xlim = xlms,ylim = ylms)+
-    #   theme(legend.position = "none")+
-    #   labs(title = paste(species))
-    # 
-    # maps2[[jj]] <- tmap2
-    # 
-    # 
-    # 
-    # tmap3 = ggplot(route_map_out)+
-    #   geom_sf(data = strata_map,colour = gray(0.8),fill = NA)+
-    #   geom_sf(aes(colour = Tplot,size = 1/h_ci))+
-    #   scale_size_continuous(range = c(0.5,3))+
-    #   scale_colour_manual(values = map_palette, aesthetics = c("colour"),
-    #                       guide = guide_legend(reverse=TRUE),
-    #                       name = paste0(lgnd_head,firstYear,"-",lastYear))+
-    #   coord_sf(xlim = xlms,ylim = ylms)+
-    #   labs(title = paste(species))
-    # 
-    # maps3[[jj]] <- tmap3
-    # 
-    # 
-    # 
-    # 
-    # tmap_space = ggplot(route_map_out_space)+
-    #   geom_sf(data = strata_map,colour = gray(0.8),fill = NA)+
-    #   geom_sf(aes(colour = Tplot,size = abund))+
-    #   scale_colour_manual(values = map_palette, aesthetics = c("colour"),
-    #                       guide = guide_legend(reverse=TRUE),
-    #                       name = paste0(lgnd_head,firstYear,"-",lastYear))+
-    #   coord_sf(xlim = xlms,ylim = ylms)+
-    #   theme(legend.position = "none")+
-    #   labs(title = paste("spatial component"))
-    # maps_space[[jj]] <- tmap_space
-    # 
-    # 
-    # 
-    # 
-    # 
-    # tmap_rand = ggplot(route_map_out_rand)+
-    #   geom_sf(data = strata_map,colour = gray(0.8),fill = NA)+
-    #   geom_sf(aes(colour = Tplot,size = abund))+
-    #   scale_colour_manual(values = map_palette, aesthetics = c("colour"),
-    #                       guide = guide_legend(reverse=TRUE),
-    #                       name = paste0(lgnd_head,firstYear,"-",lastYear))+
-    #   coord_sf(xlim = xlms,ylim = ylms)+
-    #   theme(legend.position = "none")+
-    #   labs(title = paste("random component"))
-    # 
-    # maps_rand[[jj]] <- tmap_rand
-    # 
-    
-    print(species)
-    # write.csv(route_map_out,
-    #           file = paste0("output/",species," ",firstYear," ",lastYear,"_Canadian_trends_and_intercepts.csv"))
-    
-    
   
-}
-
-
-
-# overall trend maps and trends -------------------------------------------
-
-
-pdf(file = paste0("figures/Combined_",firstYear,"_",lastYear,"_",scope,"_trend_map_route2.pdf"),
-    height = 8.5,
-    width = 11)
-for(j in 1:length(maps)){
-  if(!is.null(maps[[j]])){print(maps[[j]])}
-}
-dev.off()
-
-
-
-# comparison trend maps and trends -------------------------------------------
-
-library(patchwork)
-
-pdf(file = paste0("figures/Combined_",firstYear,"_",lastYear,"_",scope,"_trend_map_route2_by_half_CI.pdf"),
-    height = 8.5,
-    width = 11)
-for(j in 1:length(maps3)){
-  if(!is.null(maps3[[j]])){print(maps3[[j]])}
-}
-dev.off()
-
-
-
-
-
-pdf(file = paste0("figures/Combined_",firstYear,"_",lastYear,"_",scope,"_space_all_trend_map_route2.pdf"),
-    width = 8.5,
-    height = 11)
-for(j in 1:length(maps)){
-  if(!is.null(maps[[j]])){
-    print(maps2[[j]] /(maps_space[[j]]))
-  }
-}
-dev.off()
-
-
-
-
-
-
-# add in the original BBS route database start coordinates
-
-starts = unique(strat_data$route_strat[,c("rt.uni","Latitude","Longitude")])
-
-# rename the trend output columns -----------------------------------------
-
-trends_out2 = trends_out %>% 
-  data.frame() %>% 
-  mutate(h_ci = (uci_trend-lci_trend)/2) %>% 
-  select(.,
-         species,route,strat,
-         trend,lci_trend,uci_trend,h_ci,
-         abund,lci_i,uci_i,
-         b,lci,uci,sd) %>% 
-  relocate(.,
-           species,route,strat,
-           trend,lci_trend,uci_trend,h_ci,
-           abund,lci_i,uci_i,
-           b,lci,uci,sd) %>% 
-  rename(.,
-         english_name = species,BBS_route = route, BBS_stratum = strat,
-         Trend = trend,lci95_Trend = lci_trend,uci95_Trend = uci_trend,half_CI_width = h_ci,
-         Mean_abundance = abund,lci95_Mean_abundance = lci_i,uci95_Mean_abundance = uci_i,
-         slope = b,lci95_slope = lci,uci95_slope = uci,sd_slope = sd) %>% 
-  left_join(starts,by = c("BBS_route" = "rt.uni"))
-
-
-trends_out_space2 = trends_out_space %>% 
-  data.frame() %>% 
-  mutate(h_ci = (uci_trend-lci_trend)/2) %>% 
-  select(.,
-         species,route,strat,
-         trend,lci_trend,uci_trend,h_ci,
-         abund,lci_i,uci_i,
-         b,lci,uci,sd) %>% 
-  relocate(.,
-           species,route,strat,
-           trend,lci_trend,uci_trend,h_ci,
-           abund,lci_i,uci_i,
-           b,lci,uci,sd) %>% 
-  rename(.,
-         english_name = species,BBS_route = route, BBS_stratum = strat,
-         Trend = trend,lci95_Trend = lci_trend,uci95_Trend = uci_trend,half_CI_width = h_ci,
-         Mean_abundance = abund,lci95_Mean_abundance = lci_i,uci95_Mean_abundance = uci_i,
-         slope = b,lci95_slope = lci,uci95_slope = uci,sd_slope = sd) %>% 
-  left_join(starts,by = c("BBS_route" = "rt.uni"))
-
-trends_out_rand2 = trends_out_rand %>% 
-  data.frame() %>% 
-  mutate(h_ci = (uci_trend-lci_trend)/2) %>% 
-  select(.,
-         species,route,strat,
-         trend,lci_trend,uci_trend,h_ci,
-         abund,lci_i,uci_i,
-         b,lci,uci,sd) %>% 
-  relocate(.,
-           species,route,strat,
-           trend,lci_trend,uci_trend,h_ci,
-           abund,lci_i,uci_i,
-           b,lci,uci,sd) %>% 
-  rename(.,
-         english_name = species,BBS_route = route, BBS_stratum = strat,
-         Trend = trend,lci95_Trend = lci_trend,uci95_Trend = uci_trend,half_CI_width = h_ci,
-         Mean_abundance = abund,lci95_Mean_abundance = lci_i,uci95_Mean_abundance = uci_i,
-         slope = b,lci95_slope = lci,uci95_slope = uci,sd_slope = sd) %>% 
-  left_join(starts,by = c("BBS_route" = "rt.uni"))
-
-
-# Export the trend estimates ----------------------------------------------
-
-
-write.csv(trends_out2,
-          file = paste0("output/combined_",firstYear,"_",lastYear,"_",scope,"_trends_and_intercepts.csv"))
-
-
-write.csv(trends_out_space2,
-          file = paste0("output/combined_",firstYear,"_",lastYear,"_",scope,"_spatial_trends_and_intercepts2.csv"))
-
-
-
-write.csv(trends_out_rand2,
-          file = paste0("output/combined_",firstYear,"_",lastYear,"_",scope,"_random_trends_and_intercepts2.csv"))
-
-
-
-# graph the spatial and random variance comparison ------------------------
-
-var_plot = ggplot()+
-  geom_boxplot(data = sdbeta_space_rand,aes(x = .variable,y = mean))+
-  theme_classic()
-
-sdbeta_difs <- sdbeta_dif %>% 
-  mutate(species = fct_reorder(species,mean))
-
-var_dif_plot = ggplot(data = sdbeta_difs,aes(x = species,y = mean))+
-  geom_point(aes(size = 1/(sd^2)))+
-  geom_errorbar(aes(ymin = lci, ymax = uci),alpha = 0.3,width = 0)+
-  geom_hline(yintercept = 0)+
-  scale_size_continuous(range = c(0.5,2))+
-  labs(title = "Difference in sd_beta (random - spatial)")+
-  theme(axis.text = element_text(size = 5),
-        legend.position = "none")+
-  coord_flip()
-pdf(file = paste0("figures/Combined_",firstYear,"_",lastYear,"_",scope,"_difference_beta_sd.pdf"),
-    width = 8.5,
-    height = 17)
-print(var_dif_plot)
-dev.off()
-
-
+    print(species)
+ 
+  
 
