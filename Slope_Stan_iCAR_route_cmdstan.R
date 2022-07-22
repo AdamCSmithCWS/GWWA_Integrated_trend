@@ -10,7 +10,7 @@ library(cmdstanr)
 library(sf)
 library(spdep)
 library(ggforce)
-source("functions/neighbours_define.R") ## function to define neighbourhood relationships
+source("functions/neighbours_define_alt.R") ## function to define neighbourhood relationships
 source("functions/prepare-jags-data-alt.R") ## small alteration of the bbsBayes function
 source("functions/posterior_summary_functions.R") ## functions similar to tidybayes that work on cmdstanr output
 ## changes captured in a commit on Nov 20, 2020
@@ -24,7 +24,7 @@ scope = "integrated"
 
 strat_data = stratify(by = strat)
 
-firstYear = 2010
+firstYear = 2009
 lastYear = 2021
 
 #output_dir <- "G:/BBS_iCAR_route_trends/output"
@@ -37,7 +37,7 @@ laea = st_crs("+proj=laea +lat_0=40 +lon_0=-95") # Lambert equal area coord refe
 
 # load the GWWA monitoring data -------------------------------------------
 
-gwwa_dat <- read.csv("data/All_stacked_GWWA_data_2009-2021.csv")
+gwwa_dat <- read.csv("data/2009_2021_GWWA_Data_final.csv")
 gwwa_dat <- gwwa_dat %>% 
   mutate(State = str_trim(str_to_upper(State)),
          GWWA = as.integer(GWWA))  %>% 
@@ -138,15 +138,17 @@ gwwa_ag <- out_strat %>%
   as.data.frame() %>% 
   filter(page %in% strat_w_sufficient_data$page,
          Year < 2022) %>% 
-  group_by(page,Year) %>% 
+  group_by(page,Year,Observer) %>% 
   summarise(count = sum(GWWA),
             n_survey = n(),
-            raw_mean_count = mean(GWWA))
+            raw_mean_count = mean(GWWA),
+            observer_gwwa = as.integer(factor(Observer)))
 
 
-simple_raw_plot <- ggplot(data = gwwa_ag,aes(x = Year,y = raw_mean_count,group = page))+
+simple_raw_plot <- ggplot(data = gwwa_ag,aes(x = Year,y = raw_mean_count+0.1,group = page))+
   geom_point(aes(colour = page))+
-  geom_smooth(method = "lm",se = FALSE)
+  geom_smooth(method = "lm",se = FALSE)+
+  scale_y_continuous(trans = "log10")
 print(simple_raw_plot)
 
 
@@ -224,7 +226,7 @@ gwwa_data <- site_centres_gwwa %>%
 
 species_f <- gsub(species,pattern = " ",replacement = "_",fixed = T)
 
-sp_file <- paste0(output_dir,"/",species_f,"_",scope,"_",firstYear,"_",lastYear,"_slope_route_iCAR.RData")
+sp_file <- paste0(output_dir,"/",species_f,"_",scope,"_with_observer_",firstYear,"_",lastYear,"_slope_iCAR.RData")
 
 
 jags_data = try(prepare_jags_data(strat_data = strat_data,
@@ -243,6 +245,7 @@ bbs_data <- data.frame(count = jags_data$count,
                        Latitude = jags_data$Latitude,
                        Longitude = jags_data$Longitude,
                        obser = jags_data$obser,
+                       observer_bbs = as.integer(factor(jags_data$obser)),
                        firstyr = jags_data$firstyr,
                        survey = 1,
                        site_bbs = as.integer(factor(jags_data$route)))
@@ -301,8 +304,9 @@ site_centres_bbs = st_transform(site_centres_bbs,crs = laea) %>%
 # Merge the data ----------------------------------------------------------
 
 bbs_merge <- bbs_data %>% 
-  select(count,YEAR,route,obser,firstyr,survey,site_bbs) %>% 
-  rename(site_orig = route) %>% 
+  select(count,YEAR,route,observer_bbs,firstyr,survey,site_bbs) %>% 
+  rename(site_orig = route,
+         observer = observer_bbs) %>% 
   mutate(inds_bbs = 1:nrow(bbs_data),
          offset = log(50),
          inds_gwwa = 0,
@@ -312,11 +316,11 @@ bbs_merge <- bbs_data %>%
 ## this should help to estimate the GWWA intercept, which is currently very small
 ## if the offset scales the values to individual counts
 gwwa_merge <- gwwa_data %>% 
-  select(count,YEAR,site_orig,survey,site_gwwa,n_survey) %>% 
+  select(count,YEAR,site_orig,survey,site_gwwa,n_survey,Observer) %>% 
   rename(offset = n_survey) %>% 
   mutate(inds_gwwa = 1:nrow(gwwa_data),
          offset = log(offset),
-         obser = 1,
+         observer = as.integer(factor(Observer)),
          firstyr = 0,
          inds_bbs = 0,
          site_bbs = 1)
@@ -343,10 +347,10 @@ car_stan_dat <- neighbours_define(real_strata_map = site_centres,
                                   plot_neighbours = TRUE,
                                   species = species,
                                   plot_dir = "route_maps/",
-                                  plot_file = paste0("_merged_",scope,"_route_maps.pdf"),
+                                  plot_file = paste0("_merged_new_",scope,"_route_maps.pdf"),
                                   save_plot_data = TRUE,
                                   voronoi = TRUE,
-                                  alt_strat = "site",
+                                  strat_indicator = "site",
                                   add_map = strata_map)
 
 site_list_temp <- site_centres %>% 
@@ -368,7 +372,8 @@ ncounts = nrow(data_all)
 ncounts_bbs = max(data_all$inds_bbs)
 ncounts_gwwa = max(data_all$inds_gwwa)
 nyears = max(data_all$year)
-nobservers = max(data_all$obser)
+nobservers_bbs = max(data_all[which(data_all$survey == 1),"observer"])
+nobservers_gwwa = max(data_all[which(data_all$survey == 0),"observer"])
 
 site_bbs <- site_list$site_bbs
 site_gwwa <- site_list$site_gwwa
@@ -381,7 +386,8 @@ stan_data <- list(nsites = nsites,
                   ncounts_bbs = ncounts_bbs,
                   ncounts_gwwa = ncounts_gwwa,
                   nyears = nyears,
-                  nobservers = nobservers,
+                  nobservers_bbs = nobservers_bbs,
+                  nobservers_gwwa = nobservers_gwwa,
                   
                   count = data_all$count,
                   inds_bbs = data_all$inds_bbs,
@@ -391,7 +397,7 @@ stan_data <- list(nsites = nsites,
                   survey = data_all$survey,
                   firstyr = data_all$firstyr,
                   observer = data_all$obser,
-                  offset = data_all$offset,
+                  off_set = data_all$offset,
                   
                   survey_sites = survey_sites,
                   site_bbs = site_bbs,
@@ -422,12 +428,15 @@ init_def <- function(){ list(noise_raw_bbs = rnorm(stan_data$ncounts_bbs,0,0.1),
                              ALPHA_gwwa = 0,
                              BETA = 0,
                              eta = 0,
-                             obs_raw = rnorm(stan_data$nobservers,0,0.1),
+                             obs_raw_gwwa = rnorm(stan_data$nobservers_gwwa,0,0.1),
+                             obs_raw_bbs = rnorm(stan_data$nobservers_bbs,0,0.1),
                              sdnoise_bbs = 0.2,
                              sdnoise_gwwa = 0.2,
-                             sdobs = 0.1,
+                             sdobs_gwwa = 0.1,
+                             sdobs_bbs = 0.1,
                              sdbeta_space = runif(1,0.01,0.1),
                              sdbeta_rand = runif(1,0.01,0.1),
+                             sdalpha = runif(1,0.01,0.1),
                              beta_raw_space = rnorm(stan_data$nsites,0,0.01),
                              beta_raw_rand = rnorm(stan_data$nsites,0,0.01))}
 
@@ -435,9 +444,9 @@ out_base <- paste0(species_f,"_",scope,"_",firstYear)
 
 slope_stanfit <- slope_model$sample(
   data=stan_data,
-  refresh=200,
-  chains=3, iter_sampling=3000,
-  iter_warmup=4000,
+  refresh=100,
+  chains=3, iter_sampling=500,
+  iter_warmup=500,
   parallel_chains = 3,
   #pars = parms,
   adapt_delta = 0.8,
