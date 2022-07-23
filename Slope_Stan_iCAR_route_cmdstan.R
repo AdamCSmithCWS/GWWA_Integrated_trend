@@ -414,7 +414,7 @@ stan_data <- list(nsites = nsites,
 
 if(car_stan_dat$N != stan_data[["nsites"]]){stop("Some routes are missing from adjacency matrix")}
 
-mod.file = "models/slope_iCAR_integrated.stan"
+mod.file = "models/slope_iCAR_integrated_simple.stan"
 
 
 
@@ -435,18 +435,20 @@ init_def <- function(){ list(noise_raw_bbs = rnorm(stan_data$ncounts_bbs,0,0.1),
                              sdobs_gwwa = 0.1,
                              sdobs_bbs = 0.1,
                              sdbeta_space = runif(1,0.01,0.1),
-                             sdbeta_rand = runif(1,0.01,0.1),
+                             #sdbeta_rand = runif(1,0.01,0.1),
                              sdalpha = runif(1,0.01,0.1),
-                             beta_raw_space = rnorm(stan_data$nsites,0,0.01),
-                             beta_raw_rand = rnorm(stan_data$nsites,0,0.01))}
+                             #beta_raw_rand = rnorm(stan_data$nsites,0,0.01),
+                             beta_raw_space = rnorm(stan_data$nsites,0,0.01))
+  }
 
 out_base <- paste0(species_f,"_",scope,"_",firstYear)
 
 slope_stanfit <- slope_model$sample(
   data=stan_data,
   refresh=100,
-  chains=3, iter_sampling=500,
-  iter_warmup=500,
+  chains=3, 
+  iter_warmup=2000,
+  iter_sampling=4000,
   parallel_chains = 3,
   #pars = parms,
   adapt_delta = 0.8,
@@ -467,8 +469,7 @@ csv_files <- csv_files[1:3]
 
 shiny_explore <- FALSE
 if(shiny_explore){
-  sl_rstan <- rstan::read_stan_csv(csv_files)
-  shinystan::launch_shinystan(shinystan::as.shinystan(sl_rstan))
+  shinystan::launch_shinystan(shinystan::as.shinystan(slope_stanfit))
   
   #loo_stan = loo(sl_rstan)
 }
