@@ -445,7 +445,7 @@ out_base <- paste0(species_f,"_",scope,"_",firstYear)
 
 slope_stanfit <- slope_model$sample(
   data=stan_data,
-  refresh=100,
+  refresh=500,
   chains=3, 
   iter_warmup=2000,
   iter_sampling=4000,
@@ -705,99 +705,99 @@ shinycheck <- FALSE
     # slopes_rand_full_int = inner_join(slopes_rand_full,interc,by = "s")
     # slopes_rand_full_int$site = slopes_rand_full_int$s
     
-    
-    beta_rand_samples = posterior_samples(sl_rstan,
-                                          "beta_rand",
-                                          dims = "s")
-    
-    slopes_rand = beta_rand_samples %>% group_by(s) %>% 
-      summarise(b = mean(.value),
-                lci = quantile(.value,LC),
-                uci = quantile(.value,UC),
-                sd = sd(.value),
-                prec = 1/var(.value),
-                trend = mean((exp(.value)-1)*100),
-                lci_trend = quantile((exp(.value)-1)*100,LC),
-                uci_trend = quantile((exp(.value)-1)*100,UC),
-                .groups = "keep")
-    
-    slops_rand_int = inner_join(slopes_rand,interc,by = "s")
-    slops_rand_int$site = slops_rand_int$s
+    # 
+    # beta_rand_samples = posterior_samples(sl_rstan,
+    #                                       "beta_rand",
+    #                                       dims = "s")
+    # 
+    # slopes_rand = beta_rand_samples %>% group_by(s) %>% 
+    #   summarise(b = mean(.value),
+    #             lci = quantile(.value,LC),
+    #             uci = quantile(.value,UC),
+    #             sd = sd(.value),
+    #             prec = 1/var(.value),
+    #             trend = mean((exp(.value)-1)*100),
+    #             lci_trend = quantile((exp(.value)-1)*100,LC),
+    #             uci_trend = quantile((exp(.value)-1)*100,UC),
+    #             .groups = "keep")
+    # 
+    # slops_rand_int = inner_join(slopes_rand,interc,by = "s")
+    # slops_rand_int$site = slops_rand_int$s
     
     
     # spatial component of slope ----------------------------------------
     
     
-    beta_space_samples = posterior_samples(sl_rstan,"beta_space",
-                                           dims = "s")
-    
-    slopes_space = beta_space_samples %>% group_by(s) %>% 
-      summarise(b = mean(.value),
-                lci = quantile(.value,LC),
-                uci = quantile(.value,UC),
-                sd = sd(.value),
-                prec = 1/var(.value),
-                trend = mean((exp(.value)-1)*100),
-                lci_trend = quantile((exp(.value)-1)*100,LC),
-                uci_trend = quantile((exp(.value)-1)*100,UC),
-                .groups = "keep")
-    
-    slops_space_int = inner_join(slopes_space,interc,by = "s")
-    slops_space_int$site = slops_space_int$s
-    
+    # beta_space_samples = posterior_samples(sl_rstan,"beta_space",
+    #                                        dims = "s")
+    # 
+    # slopes_space = beta_space_samples %>% group_by(s) %>% 
+    #   summarise(b = mean(.value),
+    #             lci = quantile(.value,LC),
+    #             uci = quantile(.value,UC),
+    #             sd = sd(.value),
+    #             prec = 1/var(.value),
+    #             trend = mean((exp(.value)-1)*100),
+    #             lci_trend = quantile((exp(.value)-1)*100,LC),
+    #             uci_trend = quantile((exp(.value)-1)*100,UC),
+    #             .groups = "keep")
+    # 
+    # slops_space_int = inner_join(slopes_space,interc,by = "s")
+    # slops_space_int$site = slops_space_int$s
+    # 
     
     # Compare spatial and random variation ------------------------------------
-    sdbeta_rand_tmp_samples <- posterior_samples(sl_rstan,
-                                                 "sdbeta_rand")
-    sdbeta_space_tmp_samples <- posterior_samples(sl_rstan,
-                                                  "sdbeta_space")
+    # sdbeta_rand_tmp_samples <- posterior_samples(sl_rstan,
+    #                                              "sdbeta_rand")
+    # sdbeta_space_tmp_samples <- posterior_samples(sl_rstan,
+    #                                               "sdbeta_space")
+    # 
+    # sdbeta_space_rand_tmp_samples <- bind_rows(sdbeta_rand_tmp_samples,
+    #                                            sdbeta_space_tmp_samples)
+    # 
+    # 
+    # sdbeta_space_rand_tmp <- sdbeta_space_rand_tmp_samples %>% 
+    #   group_by(.variable) %>%
+    #   summarise(mean = mean((.value)),
+    #             lci = quantile((.value),LC),
+    #             uci = quantile((.value),UC),
+    #             sd = sd((.value)),
+    #             .groups = "keep") %>% 
+    #   mutate(species = species)
+    # #combines all species estimates
+    # sdbeta_space_rand <- bind_rows(sdbeta_space_rand,sdbeta_space_rand_tmp)
+    # 
+    # 
+    # 
+    # # difference rand-spatial -------------------------------------------------
+    # 
+    # sdbeta_space_tmp_samples <- sdbeta_space_tmp_samples %>% 
+    #   rename(sd_space = .value) %>% 
+    #   ungroup() %>% 
+    #   select(-.variable)
+    # 
+    # sdbeta_rand_tmp_samples <- sdbeta_rand_tmp_samples %>% 
+    #   rename(sd_rand = .value)%>% 
+    #   ungroup() %>% 
+    #   select(-.variable)
+    # 
+    # sdbeta_tmp_samples <- inner_join(sdbeta_rand_tmp_samples,sdbeta_space_tmp_samples)
+    # 
+    # sdbeta_tmp_dif <- sdbeta_tmp_samples %>% 
+    #   group_by(.draw) %>%
+    #   summarise(dif = sd_rand-sd_space) %>% 
+    #   ungroup() %>% 
+    #   summarise(mean = mean((dif)),
+    #             lci = quantile((dif),LC),
+    #             uci = quantile((dif),UC),
+    #             sd = sd((dif))) %>% 
+    #   mutate(species = species)
+    # 
+    # 
+    # 
     
-    sdbeta_space_rand_tmp_samples <- bind_rows(sdbeta_rand_tmp_samples,
-                                               sdbeta_space_tmp_samples)
     
-    
-    sdbeta_space_rand_tmp <- sdbeta_space_rand_tmp_samples %>% 
-      group_by(.variable) %>%
-      summarise(mean = mean((.value)),
-                lci = quantile((.value),LC),
-                uci = quantile((.value),UC),
-                sd = sd((.value)),
-                .groups = "keep") %>% 
-      mutate(species = species)
-    #combines all species estimates
-    sdbeta_space_rand <- bind_rows(sdbeta_space_rand,sdbeta_space_rand_tmp)
-    
-    
-    
-    # difference rand-spatial -------------------------------------------------
-    
-    sdbeta_space_tmp_samples <- sdbeta_space_tmp_samples %>% 
-      rename(sd_space = .value) %>% 
-      ungroup() %>% 
-      select(-.variable)
-    
-    sdbeta_rand_tmp_samples <- sdbeta_rand_tmp_samples %>% 
-      rename(sd_rand = .value)%>% 
-      ungroup() %>% 
-      select(-.variable)
-    
-    sdbeta_tmp_samples <- inner_join(sdbeta_rand_tmp_samples,sdbeta_space_tmp_samples)
-    
-    sdbeta_tmp_dif <- sdbeta_tmp_samples %>% 
-      group_by(.draw) %>%
-      summarise(dif = sd_rand-sd_space) %>% 
-      ungroup() %>% 
-      summarise(mean = mean((dif)),
-                lci = quantile((dif),LC),
-                uci = quantile((dif),UC),
-                sd = sd((dif))) %>% 
-      mutate(species = species)
-    
-   
-    
-    
-    
-    route_trajectories <- TRUE
+    route_trajectories <- FALSE
     
     
     # Route-level trajectories ------------------------------------------------
@@ -912,86 +912,86 @@ shinycheck <- FALSE
     }
     
     
-    ind_samples <- posterior_samples(sl_rstan,
-                                        "indices",
-                                     dims = c("s","y")) %>% 
-      rename(site = s)
-    
-    I_samples <- posterior_samples(sl_rstan,
-                                   "I",
-                                   dims = c("y"))
-    
-    BETA <- posterior_samples(sl_rstan,
-                                      "BETA") %>% 
-      summarise(trend = mean((exp(.value)-1)*100),
-                lci = quantile((exp(.value)-1)*100,LC),
-                uci = quantile((exp(.value)-1)*100,UC),
-                sd = sd((exp(.value)-1)*100))
-    
-    I_all <- I_samples %>% group_by(y) %>% 
-      summarise(index = mean(.value),
-                lci = quantile(.value,LC),
-                uci = quantile(.value,UC),
-                sd = sd(.value),
-                .groups = "keep") %>% 
-      mutate(scale = "SurveyWide",
-             YEAR = y+(min(data_all$YEAR)-1))
-    
-    overall_traj <- ggplot(data = I_all,aes(x = YEAR,y = index))+
-      geom_ribbon(aes(ymin = lci,ymax = uci),alpha = 0.1)+
-      geom_line()+
-      scale_y_continuous(limits = c(0,NA))
-    print(overall_traj)
-    
-    inds_all <- ind_samples %>% left_join(.,site_list,by = "site") %>% 
-      group_by(site, site_orig,survey,y) %>% 
-      summarise(index = mean(.value),
-                lci = quantile(.value,LC),
-                uci = quantile(.value,UC),
-                sd = sd(.value),
-                .groups = "keep")%>% 
-      mutate(scale = "Site",
-             YEAR = y+(min(data_all$YEAR)-1)) 
-    
-    
-    inds_survey <- ind_samples %>% left_join(.,site_list,by = "site") %>% 
-      group_by(survey,y,.draw) %>% 
-      summarise(v = mean(.value),
-                .groups = "drop") %>% 
-      group_by(survey,y) %>% 
-      summarise(index = mean(v),
-                lci = quantile(v,LC),
-                uci = quantile(v,UC),
-                sd = sd(v),
-                .groups = "keep")%>% 
-      mutate(scale = "Survey",
-             YEAR = y+(min(data_all$YEAR)-1),
-             Survey = ifelse(survey == 1,"BBS","GWWA")) %>% 
-      filter(!(Survey == "BBS" & YEAR >2019))
-    
-    
-    survey_trajs <- ggplot(data = inds_survey,aes(x = YEAR,y = index))+
-      geom_ribbon(aes(ymin = lci,ymax = uci),alpha = 0.1)+
-      geom_line()+
-      scale_y_continuous(limits = c(0,NA))+
-      facet_wrap(~Survey)
-    print(survey_trajs)
-    # connect trends to original route names ----------------------------------
-    
+    # ind_samples <- posterior_samples(sl_rstan,
+    #                                     "indices",
+    #                                  dims = c("s","y")) %>% 
+    #   rename(site = s)
+    # 
+    # I_samples <- posterior_samples(sl_rstan,
+    #                                "I",
+    #                                dims = c("y"))
+    # 
+    # BETA <- posterior_samples(sl_rstan,
+    #                                   "BETA") %>% 
+    #   summarise(trend = mean((exp(.value)-1)*100),
+    #             lci = quantile((exp(.value)-1)*100,LC),
+    #             uci = quantile((exp(.value)-1)*100,UC),
+    #             sd = sd((exp(.value)-1)*100))
+    # 
+    # I_all <- I_samples %>% group_by(y) %>% 
+    #   summarise(index = mean(.value),
+    #             lci = quantile(.value,LC),
+    #             uci = quantile(.value,UC),
+    #             sd = sd(.value),
+    #             .groups = "keep") %>% 
+    #   mutate(scale = "SurveyWide",
+    #          YEAR = y+(min(data_all$YEAR)-1))
+    # 
+    # overall_traj <- ggplot(data = I_all,aes(x = YEAR,y = index))+
+    #   geom_ribbon(aes(ymin = lci,ymax = uci),alpha = 0.1)+
+    #   geom_line()+
+    #   scale_y_continuous(limits = c(0,NA))
+    # print(overall_traj)
+    # 
+    # inds_all <- ind_samples %>% left_join(.,site_list,by = "site") %>% 
+    #   group_by(site, site_orig,survey,y) %>% 
+    #   summarise(index = mean(.value),
+    #             lci = quantile(.value,LC),
+    #             uci = quantile(.value,UC),
+    #             sd = sd(.value),
+    #             .groups = "keep")%>% 
+    #   mutate(scale = "Site",
+    #          YEAR = y+(min(data_all$YEAR)-1)) 
+    # 
+    # 
+    # inds_survey <- ind_samples %>% left_join(.,site_list,by = "site") %>% 
+    #   group_by(survey,y,.draw) %>% 
+    #   summarise(v = mean(.value),
+    #             .groups = "drop") %>% 
+    #   group_by(survey,y) %>% 
+    #   summarise(index = mean(v),
+    #             lci = quantile(v,LC),
+    #             uci = quantile(v,UC),
+    #             sd = sd(v),
+    #             .groups = "keep")%>% 
+    #   mutate(scale = "Survey",
+    #          YEAR = y+(min(data_all$YEAR)-1),
+    #          Survey = ifelse(survey == 1,"BBS","GWWA")) %>% 
+    #   filter(!(Survey == "BBS" & YEAR >2019))
+    # 
+    # 
+    # survey_trajs <- ggplot(data = inds_survey,aes(x = YEAR,y = index))+
+    #   geom_ribbon(aes(ymin = lci,ymax = uci),alpha = 0.1)+
+    #   geom_line()+
+    #   scale_y_continuous(limits = c(0,NA))+
+    #   facet_wrap(~Survey)
+    # print(survey_trajs)
+    # # connect trends to original route names ----------------------------------
+    # 
     route_map_out = left_join(site_centres,slops_int,by = "site")
     route_map_out$species <- species
     
 
     
-    route_map_out_rand = left_join(site_centres,slops_rand_int,by = "site")
-    route_map_out_rand$species <- species
-    
-
-    
-    route_map_out_space = left_join(site_centres,slops_space_int,by = "site")
-    route_map_out_space$species <- species
-    
-  
+    # route_map_out_rand = left_join(site_centres,slops_rand_int,by = "site")
+    # route_map_out_rand$species <- species
+    # 
+    # 
+    # 
+    # route_map_out_space = left_join(site_centres,slops_space_int,by = "site")
+    # route_map_out_space$species <- species
+    # 
+    # 
     
     
     ### setting up boundaries for plots
@@ -1018,8 +1018,8 @@ shinycheck <- FALSE
       route_map_out <- route_map_out %>% 
         mutate(h_ci = (uci_trend-lci_trend)/2)
       
-      route_map_out_space$Tplot <- cut(route_map_out_space$trend,breaks = c(-Inf, breaks, Inf),labels = labls)
-      route_map_out_rand$Tplot <- cut(route_map_out_rand$trend,breaks = c(-Inf, breaks, Inf),labels = labls)
+      #route_map_out_space$Tplot <- cut(route_map_out_space$trend,breaks = c(-Inf, breaks, Inf),labels = labls)
+      #route_map_out_rand$Tplot <- cut(route_map_out_rand$trend,breaks = c(-Inf, breaks, Inf),labels = labls)
       
       
     }else{
@@ -1060,7 +1060,7 @@ shinycheck <- FALSE
            subtitle = "Route-level trends from a spatial iCAR model, using Stan")
     
     
-    png(filename = paste0("Figures/images/",species_f,"_Trends_",firstYear,".png"),
+    png(filename = paste0("Figures/images/",species_f,"_Trends_w_observer_",firstYear,".png"),
         res = 600,
         width = 20,
         height = 15,
