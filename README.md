@@ -16,6 +16,6 @@ Integrated, spatially explicit trend model for Golden-winged Warblers. Using dat
 
         1.  Run LFO on spatial vs random-only trend model
 
-2.  Contact Matt to examine the change in habitat using similar methods to the [Betts et al.](https://doi.org/10.1038/s41559-022-01737-8)paper.
+2.  Potentially examine the change in habitat using similar methods to the [Betts et al.](https://doi.org/10.1038/s41559-022-01737-8)paper.
 
 3.  Run the full BBS model for the species using 2021 data.
