@@ -6,16 +6,10 @@ Integrated, spatially explicit trend model for Golden-winged Warblers. Using dat
 
 ### To Do
 
-1.  See if there is a way to get the BYM model to converge - currently the data don't support for a spatial and random effect of trend.
-
-    1.  If the BYM model will converge:
-
-        1.  code in a leave future out (LFO) cross-validation comparing the two kinds of spatial models (simple iCAR vs BYM on the trends).
-
-    2.  If the BYM model will not converge:
-
-        1.  Run LFO on spatial vs random-only trend model
+1.  generate site-level trajectories that are comparable to observed counts - model assessment
 
 2.  Contact Matt to examine the change in habitat using similar methods to the [Betts et al.](https://doi.org/10.1038/s41559-022-01737-8)paper.
 
 3.  Run the full BBS model for the species using 2021 data.
+
+4.  Generate a GAMYE model that would integrate full BBS time series with the GWWA data (GAMYE_spatial_bbs_CV_integrated.stan).

@@ -30,28 +30,28 @@ data {
   
  
   // count-level data
-  int<lower=0> count[ncounts];              // count observations
-  int<lower=0, upper=ncounts_bbs> inds_bbs[ncounts]; // separate bbs count-level indicators to  track which gwwa observations link to which count. inds_bbs[i] == 0 if survey[i] == 0 (gwwa)
-  int<lower=0, upper=ncounts_gwwa> inds_gwwa[ncounts];  // separate gwwa count-level indicators to track which gwwa observations link to which count. inds_gwwa[i] == 0 if survey[i] == 1 (bbs)
-  int<lower=1> year[ncounts]; // year index
-  int<lower=1> site[ncounts]; // site index
-  int<lower=0, upper=1> survey[ncounts]; //survey index 1 == BBS 0 == gwwa
-  int<lower=0> firstyr[ncounts]; // first year index
-  int<lower=1> observer[ncounts];              // observer indicators - survey specific and so must be combined with survey[ncounts] to make sense
-  real off_set[ncounts]; // log(ncounts) - only applies to gwwa survey, off_set[i] == 0 if survey[i] == 1
-  
+  array [ncounts] int<lower=0> count;              // count observations
+  array [ncounts] int<lower=0, upper=ncounts_bbs> inds_bbs; // separate bbs count-level indicators to  track which gwwa observations link to which count. inds_bbs[i] == 0 if survey[i] == 0 (gwwa)
+  array [ncounts] int<lower=0, upper=ncounts_gwwa> inds_gwwa;  // separate gwwa count-level indicators to track which gwwa observations link to which count. inds_gwwa[i] == 0 if survey[i] == 1 (bbs)
+  array [ncounts] int<lower=1> year; // year index
+  array [ncounts] int<lower=1> site; // site index
+  array [ncounts] int<lower=0, upper=1> survey; //survey index 1 == BBS 0 == gwwa
+  array [ncounts] int<lower=0> firstyr; // first year index
+  array [ncounts] int<lower=1> observer;              // observer indicators - survey specific and so must be combined with survey[ncounts] to make sense
+  array [ncounts] real off_set; // log(ncounts) - only applies to gwwa survey, off_set[i] == 0 if survey[i] == 1
+
   // site-level data
-  int<lower=0, upper=1> survey_sites[nsites]; //survey index for sites 1 == BBS 0 == gwwa
-  int<lower=1> site_bbs[nsites]; // vector of BBS site indices for each integrated site
-  int<lower=1> site_gwwa[nsites]; // vector of GWWA site indices for each integrated site
+  array [nsites] int<lower=0, upper=1> survey_sites; //survey index for sites 1 == BBS 0 == gwwa
+  array [nsites] int<lower=1> site_bbs; // vector of BBS site indices for each integrated site
+  array [nsites] int<lower=1> site_gwwa; // vector of GWWA site indices for each integrated site
   
   // constant
   int<lower=1> fixedyear; // centering value for years
  
   // spatial neighbourhood information
   int<lower=1> N_edges;
-  int<lower=1, upper=nsites> node1[N_edges];  // node1[i] adjacent to node2[i]
-  int<lower=1, upper=nsites> node2[N_edges];  // and node1[i] < node2[i]
+  array [N_edges] int<lower=1, upper=nsites> node1;  // node1[i] adjacent to node2[i]
+  array [N_edges] int<lower=1, upper=nsites> node2;  // and node1[i] < node2[i]
 
 
 }
@@ -168,10 +168,10 @@ model {
  generated quantities {
 
      vector[ncounts] log_lik;
-     matrix[nsites,nyears] indices; //site level annual index
+     matrix[nsites,nyears] indices_plot; //site level annual index scaled to a common survey
+     matrix[nsites,nyears] indices; //site level annual index for comparison to observed means
      
-     vector[nyears] I; //overall index
-     
+   
      
 for(i in 1:ncounts){
   log_lik[i] = poisson_log_lpmf(count[i] | E[i]);
@@ -182,12 +182,17 @@ for(y in 1:nyears){
  
  for(s in 1:nsites){
     
-     indices[s,y] = exp(beta[s] * (y-fixedyear) + ALPHA_gwwa + alpha[s] + sdnoise_gwwa*sdnoise_gwwa*0.5 + sdobs_gwwa*sdobs_gwwa*0.5); 
+     indices_plot[s,y] = exp(beta[s] * (y-fixedyear) + ALPHA_gwwa + alpha[s] + sdnoise_gwwa*sdnoise_gwwa*0.5 + sdobs_gwwa*sdobs_gwwa*0.5); 
 
+
+    if(survey_sites[s]){
+      indices[s,y] = exp(beta[s] * (y-fixedyear) + ALPHA_bbs + alpha[s] + sdnoise_bbs*sdnoise_bbs*0.5 + sdobs_bbs*sdobs_bbs*0.5 + log(50)); 
+    }else{
+     indices[s,y] = exp(beta[s] * (y-fixedyear) + ALPHA_gwwa + alpha[s] + sdnoise_gwwa*sdnoise_gwwa*0.5 + sdobs_gwwa*sdobs_gwwa*0.5 + log(5)); 
+    }
  }
  
- I[y] = mean(indices[,y]);
- 
+
   }
  
  }

@@ -419,7 +419,7 @@ mod.file = "models/slope_iCAR_integrated_simple.stan"
 
 
 ## compile model
-slope_model <- cmdstan_model(mod.file)
+slope_model <- cmdstan_model(mod.file, stanc_options = list("Oexperimental"))
 
 init_def <- function(){ list(noise_raw_bbs = rnorm(stan_data$ncounts_bbs,0,0.1),
                              noise_raw_gwwa = rnorm(stan_data$ncounts_gwwa,0,0.1),
@@ -458,12 +458,10 @@ slope_stanfit <- slope_model$sample(
   output_dir = output_dir,
   output_basename = out_base)
 
+tmp <- slope_stanfit$summary()
 
 
-
-csv_files <- dir(output_dir,pattern = out_base,full.names = TRUE)
-csv_files <- csv_files[1:3]
-#slope_stanfit$save_object(file = paste0(output_dir,"/",out_base,"_gamye_iCAR.RDS"))
+slope_stanfit$save_object(file = paste0(output_dir,"/",out_base,"_gamye_iCAR.RDS"))
 
 
 
@@ -471,37 +469,22 @@ shiny_explore <- FALSE
 if(shiny_explore){
   shinystan::launch_shinystan(shinystan::as.shinystan(slope_stanfit))
   
-  #loo_stan = loo(sl_rstan)
+  #loo_stan = loo(slope_stanfit)
 }
 
 
 
 
 
-# slope_model = stan_model(file=mod.file)
-# 
-# print(paste(firstYear,species))
-# ## run sampler on model, data
-# slope_stanfit <- sampling(slope_model,
-#                                data=stan_data,
-#                                verbose=TRUE, refresh=100,
-#                                chains=4, iter=900,
-#                                warmup=600,
-#                                cores = 4,
-#                                pars = parms,
-#                                control = list(adapt_delta = 0.8,
-#                                               max_treedepth = 15))
-# 
 
-save(list = c("slope_stanfit",
-              "out_base",
+
+save(list = c("out_base",
               "stan_data",
               "site_list",
               "strata_map",
               "firstYear",
               "sp_file",
               "species_f",
-              "csv_files",
               "output_dir",
               "car_stan_dat",
               "site_centres"),
@@ -511,12 +494,10 @@ save(list = c("slope_stanfit",
 
 
 
-
-
 #stopCluster(cl = cluster)
 
 
-
+#load(sp_file)
 
 
 
@@ -605,7 +586,7 @@ save(list = c("slope_stanfit",
 # library(tidybayes)
 
 
-route_trajectories <- FALSE #set to FALSE to speed up mapping
+route_trajectories <- TRUE #set to FALSE to speed up mapping
 # 
 # maps = vector(mode = "list",length = 400)
 # maps2 = vector(mode = "list",length = 400)
@@ -624,6 +605,180 @@ route_trajectories <- FALSE #set to FALSE to speed up mapping
 
 LC = 0.05
 UC = 0.95
+library(HDInterval)
+
+
+#if(route_trajectories){
+  
+  
+  n_samples <- posterior_samples(slope_stanfit,
+                                 "indices",
+                                 dims = c("site","y"))
+  
+  
+  # obs_means
+  
+  obs_means <- data_all %>% 
+    ungroup() %>% 
+    mutate(ncounts = ifelse(survey == 1,1,exp(offset)/5)) %>% 
+    group_by(site_orig,site,site_bbs,site_gwwa,
+             survey,ST_12,BCR,COUNTRY,YEAR) %>% 
+    summarise(obs_mean = mean(count/ncounts),
+              .groups = "keep")
+  
+  
+  n_samples_t <- n_samples %>% 
+    mutate(YEAR = y+(firstYear-1)) %>% 
+    full_join(.,obs_means,by = c("site","YEAR"))
+  
+  ## figure out how to plot these trajectories with observed means                                                   
+  
+  
+site_indices <- n_samples_t %>% 
+  group_by(site_orig,survey,BCR,ST_12,YEAR) %>%
+  summarise(ind = median(.value),
+            lci = hdi(.value,0.90)[1],
+            uci = hdi(.value,0.90)[2],
+            obs_means = mean(obs_mean),
+            .groups = "keep") %>% 
+  rename(year = YEAR)
+  
+
+nsites_strat <- site_indices %>% 
+  ungroup() %>% 
+  select(site_orig,ST_12,survey) %>% 
+  distinct() %>% 
+  group_by(ST_12) %>% 
+  summarise(nsites = n())
+
+pdf("Figures/site_trajectories.pdf",
+    height = 8.5,
+    width = 11)
+for(s in nsites_strat$ST_12){
+  if(is.na(s)){next}
+  tmp <- site_indices %>% 
+    filter(ST_12 == s)
+  
+  tmppp <- ggplot(data = tmp, aes(x = year,y = ind))+
+    geom_ribbon(aes(ymin = lci,ymax = uci),alpha = 0.2)+
+    geom_line()+
+    geom_point(aes(x = year,y = obs_means),colour = "lightblue")+
+ #   geom_point(aes(x = year,y = obs_means2),colour = "pink")+
+    scale_y_continuous(limits = c(0,NA))+
+    scale_x_continuous(limits = c(2009,2021))+
+    facet_wrap(facets = vars(site_orig),scales = "free_y")
+    
+  print(tmppp)
+}
+dev.off()
+
+
+
+# plotting indices by BCR -------------------------------------------------
+
+  
+
+  
+  
+  BCR_indices <- n_samples_t %>% 
+    group_by(.draw,BCR,year) %>% 
+    summarise(comp_ind = mean(.value), # mean across all sites for each draw
+              nsites = n(),
+              .groups = "drop") %>% 
+    group_by(BCR,year) %>% 
+    summarise(ind = median(comp_ind),
+              lci = hdi(comp_ind,0.90)[1],
+              uci = hdi(comp_ind,0.90)[2],
+              nsites = min(nsites),
+              nsites2 = max(nsites),
+              .groups = "keep")
+  
+  bcr_plot <- ggplot(data = BCR_indices,aes(x = year, y = ind))+
+    geom_ribbon(aes(ymin = lci,ymax = uci),alpha = 0.2)+
+    geom_line(aes(alpha = nsites))+
+    scale_alpha_continuous(trans = "sqrt")+
+    facet_wrap(~BCR,nrow = 4,scales = "free_y")
+  
+  
+  print(bcr_plot)
+  
+  posterior_trends <- function(n_samples = n_samples_t,
+                               startyear = firstYear,
+                               endyear = lastYear,
+                               region = "BCR",
+                               lq = 0.025,
+                               uq = 0.975){
+    
+    texp <- function(x,ny = 10){
+      (x^(1/ny)-1)*100
+    }
+    
+    
+    
+    
+    chng <- function(x){
+      (x-1)*100
+    }
+    
+    prob_dec <- function(ch,thresh){
+      
+      length(which(ch < thresh))/length(ch)
+    }
+    
+    
+    nyrs <- endyear-startyear
+    
+    syr = paste(startyear)
+    eyr = paste(endyear)
+    out_trends <- n_samples %>% 
+      rename_with(~gsub(pattern = region,replacement = "region",.x,fixed = TRUE))  %>% 
+      filter(year %in% c(startyear,endyear)) %>% 
+      group_by(.draw,region,year) %>% 
+      summarise(comp_ind = mean(.value),
+                .groups = "drop") %>%  
+      pivot_wider(names_from = year,
+                  values_from = comp_ind) %>%
+      rename_with(~gsub(syr,"startyear",.x,fixed = TRUE)) %>% 
+      rename_with(~gsub(eyr,"endyear",.x,fixed = TRUE)) %>% 
+      group_by(region,.draw) %>% 
+      summarise(t = texp(endyear/startyear,ny = nyrs),
+                ch = chng(endyear/startyear),
+                .groups = "drop") %>% 
+      group_by(region) %>% 
+      summarise(trend = mean(t),
+                lci = quantile(t,lq,names = FALSE),
+                uci = quantile(t,uq,names = FALSE),
+                percent_change = median(ch),
+                p_ch_lci = quantile(ch,lq,names = FALSE),
+                p_ch_uci = quantile(ch,uq,names = FALSE),
+                prob_decline = prob_dec(ch,0),
+                prob_decline_GT30 = prob_dec(ch,-30),
+                prob_decline_GT50 = prob_dec(ch,-50),
+                prob_decline_GT70 = prob_dec(ch,-70),
+                .groups = "keep") %>% 
+      rename_with(~gsub(pattern = "region",replacement = region,.x,fixed = TRUE))
+    
+    
+    return(out_trends)
+  }
+  
+  BCR_trends <- posterior_trends()
+  
+  #strata_trends <- posterior_trends(region = "ST_12") 
+  
+  survey_trends <- posterior_trends(region = "survey") 
+  
+  
+  trends_out <- bind_rows(survey_trends,BCR_trends)
+  write.csv(trends_out,paste0("trends/survey_and_bcr_trends_w_observers_",species_f,"_",firstYear,".csv"),
+            row.names = FALSE)
+  
+  
+  
+  
+  
+  
+}
 
 
 
@@ -638,17 +793,17 @@ UC = 0.95
 shinycheck <- FALSE
     if(shinycheck){
     ### may be removed after re-running     launch_shinystan(slope_stanfit)
-    sl_rstan1 <- rstan::read_stan_csv(csv_files)
-    launch_shinystan(as.shinystan(sl_rstan1))
+    slope_stanfit1 <- rstan::read_stan_csv(csv_files)
+    launch_shinystan(as.shinystan(slope_stanfit1))
     ###
     }
 
 
-    sl_rstan <- slope_stanfit
+    slope_stanfit <- slope_stanfit
      ####
     # add trend and abundance ----------------------------------------
     
-    beta_samples = posterior_samples(sl_rstan,"beta",
+    beta_samples = posterior_samples(slope_stanfit,"beta",
                                      dims = "s")
     # beta_samples2 = posterior_samples(slope_stanfit,"beta",
     #                                  dims = "s")
@@ -664,7 +819,7 @@ shinycheck <- FALSE
                 uci_trend = quantile((exp(.value)-1)*100,UC),
                 .groups = "keep")
     
-    alpha_samples = posterior_samples(sl_rstan,"alpha",
+    alpha_samples = posterior_samples(slope_stanfit,"alpha",
                                       dims = "s")
     interc = alpha_samples %>% group_by(s) %>% 
       summarise(abund = mean(exp(.value)),
@@ -682,12 +837,12 @@ shinycheck <- FALSE
     
     # random effect plus mean component of slope ----------------------------------------
     
-    # BETA_samples = posterior_samples(sl_rstan,BETA) %>% 
+    # BETA_samples = posterior_samples(slope_stanfit,BETA) %>% 
     #   rename(BETA = .value) %>% 
     #   ungroup() %>% 
     #   select(BETA,.draw)
     # 
-    # beta_rand_samples = posterior_samples(sl_rstan,beta_rand[s]) %>% 
+    # beta_rand_samples = posterior_samples(slope_stanfit,beta_rand[s]) %>% 
     #   rename(beta_rand = .value) %>% 
     #   ungroup() %>% 
     #   select(beta_rand,.draw,s)
@@ -706,7 +861,7 @@ shinycheck <- FALSE
     # slopes_rand_full_int$site = slopes_rand_full_int$s
     
     # 
-    # beta_rand_samples = posterior_samples(sl_rstan,
+    # beta_rand_samples = posterior_samples(slope_stanfit,
     #                                       "beta_rand",
     #                                       dims = "s")
     # 
@@ -728,7 +883,7 @@ shinycheck <- FALSE
     # spatial component of slope ----------------------------------------
     
     
-    # beta_space_samples = posterior_samples(sl_rstan,"beta_space",
+    # beta_space_samples = posterior_samples(slope_stanfit,"beta_space",
     #                                        dims = "s")
     # 
     # slopes_space = beta_space_samples %>% group_by(s) %>% 
@@ -747,9 +902,9 @@ shinycheck <- FALSE
     # 
     
     # Compare spatial and random variation ------------------------------------
-    # sdbeta_rand_tmp_samples <- posterior_samples(sl_rstan,
+    # sdbeta_rand_tmp_samples <- posterior_samples(slope_stanfit,
     #                                              "sdbeta_rand")
-    # sdbeta_space_tmp_samples <- posterior_samples(sl_rstan,
+    # sdbeta_space_tmp_samples <- posterior_samples(slope_stanfit,
     #                                               "sdbeta_space")
     # 
     # sdbeta_space_rand_tmp_samples <- bind_rows(sdbeta_rand_tmp_samples,
@@ -801,127 +956,17 @@ shinycheck <- FALSE
     
     
     # Route-level trajectories ------------------------------------------------
-    if(route_trajectories){
-      
-      
-      
-      n_samples <- posterior_samples(sl_rstan,
-                                                   "indices",
-                                     dims = c("site","y"))
-      
-      
-      n_samples_t <- n_samples %>% 
-        left_join(site_list,by = "site") %>% 
-        mutate(year = y+(firstYear-1))
-      
-      
-      BCR_indices <- n_samples_t %>% 
-        group_by(.draw,BCR,year) %>% 
-        summarise(comp_ind = mean(.value),
-                  .groups = "drop") %>% 
-        group_by(BCR,year) %>% 
-        summarise(ind = median(comp_ind),
-                  lci = quantile(comp_ind,0.025),
-                  uci = quantile(comp_ind,0.975),
-                  .groups = "keep")
-      
-      bcr_plot <- ggplot(data = BCR_indices,aes(x = year, y = ind))+
-        geom_ribbon(aes(ymin = lci,ymax = uci),alpha = 0.2)+
-        geom_line()+
-        facet_wrap(~BCR,nrow = 4)
-      
-      
-      print(bcr_plot)
-      
-      posterior_trends <- function(n_samples = n_samples_t,
-                                   startyear = firstYear,
-                                   endyear = lastYear,
-                                   region = "BCR",
-                                   lq = 0.025,
-                                   uq = 0.975){
-        
-        texp <- function(x,ny = 10){
-          (x^(1/ny)-1)*100
-        }
-        
-        
-        
-        
-        chng <- function(x){
-          (x-1)*100
-        }
-        
-        prob_dec <- function(ch,thresh){
-          
-          length(which(ch < thresh))/length(ch)
-        }
-        
-        
-        nyrs <- endyear-startyear
-        
-        syr = paste(startyear)
-        eyr = paste(endyear)
-        out_trends <- n_samples %>% 
-          rename_with(~gsub(pattern = region,replacement = "region",.x,fixed = TRUE))  %>% 
-          filter(year %in% c(startyear,endyear)) %>% 
-          group_by(.draw,region,year) %>% 
-          summarise(comp_ind = mean(.value),
-                    .groups = "drop") %>%  
-          pivot_wider(names_from = year,
-                      values_from = comp_ind) %>%
-          rename_with(~gsub(syr,"startyear",.x,fixed = TRUE)) %>% 
-          rename_with(~gsub(eyr,"endyear",.x,fixed = TRUE)) %>% 
-          group_by(region,.draw) %>% 
-          summarise(t = texp(endyear/startyear,ny = nyrs),
-                    ch = chng(endyear/startyear),
-                    .groups = "drop") %>% 
-          group_by(region) %>% 
-          summarise(trend = mean(t),
-                    lci = quantile(t,lq,names = FALSE),
-                    uci = quantile(t,uq,names = FALSE),
-                    percent_change = median(ch),
-                    p_ch_lci = quantile(ch,lq,names = FALSE),
-                    p_ch_uci = quantile(ch,uq,names = FALSE),
-                    prob_decline = prob_dec(ch,0),
-                    prob_decline_GT30 = prob_dec(ch,-30),
-                    prob_decline_GT50 = prob_dec(ch,-50),
-                    prob_decline_GT70 = prob_dec(ch,-70),
-                    .groups = "keep") %>% 
-          rename_with(~gsub(pattern = "region",replacement = region,.x,fixed = TRUE))
-        
-        
-        return(out_trends)
-      }
-      
-      BCR_trends <- posterior_trends()
-      
-      #strata_trends <- posterior_trends(region = "ST_12") 
-      
-      survey_trends <- posterior_trends(region = "survey") 
-      
-      
-      trends_out <- bind_rows(survey_trends,BCR_trends)
-      write.csv(trends_out,paste0("trends/survey_and_bcr_trends",species_f,"_",firstYear,".csv"),
-                row.names = FALSE)
-      
-      
-      
-      
-     
-      
-    }
-    
-    
-    # ind_samples <- posterior_samples(sl_rstan,
+  
+    # ind_samples <- posterior_samples(slope_stanfit,
     #                                     "indices",
     #                                  dims = c("s","y")) %>% 
     #   rename(site = s)
     # 
-    # I_samples <- posterior_samples(sl_rstan,
+    # I_samples <- posterior_samples(slope_stanfit,
     #                                "I",
     #                                dims = c("y"))
     # 
-    # BETA <- posterior_samples(sl_rstan,
+    # BETA <- posterior_samples(slope_stanfit,
     #                                   "BETA") %>% 
     #   summarise(trend = mean((exp(.value)-1)*100),
     #             lci = quantile((exp(.value)-1)*100,LC),
