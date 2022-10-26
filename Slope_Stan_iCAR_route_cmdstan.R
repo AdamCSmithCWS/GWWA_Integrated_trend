@@ -38,6 +38,7 @@ laea = st_crs("+proj=laea +lat_0=40 +lon_0=-95") # Lambert equal area coord refe
 # load the GWWA monitoring data -------------------------------------------
 
 gwwa_dat <- read.csv("data/2009_2021_GWWA_Data_final.csv")
+
 gwwa_dat <- gwwa_dat %>% 
   mutate(State = str_trim(str_to_upper(State)),
          GWWA = as.integer(GWWA))  %>% 
@@ -126,8 +127,13 @@ span_strat <- out_strat %>%
             end_year = max(Year),
             n_obs = n())
 
+
+
+# Setting Minimum Span for inclusion --------------------------------------
+insufficient_span <- 3
+
 strat_w_sufficient_data <- span_strat %>% 
-  filter(span_years > 0,
+  filter(span_years > insufficient_span,
          !is.na(page)) %>% 
   select(page) %>% 
   as.data.frame()
@@ -235,7 +241,8 @@ jags_data = try(prepare_jags_data(strat_data = strat_data,
                                   #n_knots = 10,
                                   min_year = firstYear,
                                   max_year = lastYear,
-                                  min_n_routes = 1),silent = TRUE) # 
+                                  min_n_routes = 1,
+                                  min_max_route_years = 2),silent = TRUE) # 
 
 #create a dataframe of the jags_data results
 bbs_data <- data.frame(count = jags_data$count,
@@ -497,8 +504,8 @@ save(list = c("out_base",
 #stopCluster(cl = cluster)
 
 
-#load(sp_file)
-
+load(sp_file)
+slope_stanfit <- readRDS(paste0(output_dir,"/",out_base,"_gamye_iCAR.RDS"))
 
 
 
@@ -676,7 +683,33 @@ dev.off()
 
 # plotting indices by BCR -------------------------------------------------
 
-  
+n_samples <- posterior_samples(slope_stanfit,
+                               "indices_plot",
+                               dims = c("site","y"))
+
+
+# obs_means
+
+sites_list <- data_all %>% 
+  ungroup() %>% 
+  select(site_orig,site,site_bbs,site_gwwa,
+           survey,ST_12,BCR,COUNTRY) %>% 
+  distinct()
+
+nsites_bcr <- sites_list %>% 
+  group_by(survey,BCR) %>% 
+  summarise(n_sites = n()) %>% 
+  mutate(survey = ifelse(survey == 1,"BBS","GWWA")) %>% 
+  pivot_wider(id_cols = BCR,
+              names_from = survey,
+              values_from = n_sites,
+              names_prefix = "n_sites_",
+              values_fill = 0) 
+
+n_samples_t <- n_samples %>% 
+  mutate(year = y+(firstYear-1)) %>% 
+  left_join(.,sites_list,by = c("site"))
+
 
   
   
@@ -691,7 +724,8 @@ dev.off()
               uci = hdi(comp_ind,0.90)[2],
               nsites = min(nsites),
               nsites2 = max(nsites),
-              .groups = "keep")
+              .groups = "keep") %>% 
+    left_join(.,nsites_bcr,by = "BCR")
   
   bcr_plot <- ggplot(data = BCR_indices,aes(x = year, y = ind))+
     geom_ribbon(aes(ymin = lci,ymax = uci),alpha = 0.2)+
@@ -705,7 +739,7 @@ dev.off()
   posterior_trends <- function(n_samples = n_samples_t,
                                startyear = firstYear,
                                endyear = lastYear,
-                               region = "BCR",
+                               region = "Overall",
                                lq = 0.025,
                                uq = 0.975){
     
@@ -727,9 +761,14 @@ dev.off()
     
     
     nyrs <- endyear-startyear
-    
     syr = paste(startyear)
     eyr = paste(endyear)
+    
+    if(region == "Overall"){
+    n_samples <- n_samples %>% 
+      mutate(Overall = "Overall")
+    }
+    
     out_trends <- n_samples %>% 
       rename_with(~gsub(pattern = region,replacement = "region",.x,fixed = TRUE))  %>% 
       filter(year %in% c(startyear,endyear)) %>% 
@@ -762,14 +801,16 @@ dev.off()
     return(out_trends)
   }
   
-  BCR_trends <- posterior_trends()
+  BCR_trends <- posterior_trends(region = "BCR") %>%
+    left_join(.,nsites_bcr,by = "BCR")
   
   #strata_trends <- posterior_trends(region = "ST_12") 
   
   survey_trends <- posterior_trends(region = "survey") 
   
+  overall_trends <- posterior_trends()
   
-  trends_out <- bind_rows(survey_trends,BCR_trends)
+  trends_out <- bind_rows(overall_trends,survey_trends,BCR_trends)
   write.csv(trends_out,paste0("trends/survey_and_bcr_trends_w_observers_",species_f,"_",firstYear,".csv"),
             row.names = FALSE)
   
@@ -778,7 +819,7 @@ dev.off()
   
   
   
-}
+
 
 
 
@@ -1047,7 +1088,8 @@ shinycheck <- FALSE
     xlms = as.numeric(c(bb$xmin,bb$xmax))
     ylms = as.numeric(c(bb$ymin,bb$ymax))
     
-    
+    bcr_map <- load_map(stratify_by = "bcr")
+    bcr_map <- st_transform(bcr_map,crs = laea)
     
     
     # add mapping of trends ---------------------------------------------------
@@ -1092,7 +1134,7 @@ shinycheck <- FALSE
     
     tmap = ggplot(route_map_out)+
       #geom_sf(data = realized_strata_map,colour = gray(0.8),fill = NA)+
-      geom_sf(data = strata_map,colour = gray(0.8),fill = NA)+
+      geom_sf(data = bcr_map,colour = gray(0.8),fill = NA)+
       geom_sf(aes(colour = Tplot,size = abund,shape = survey))+
       scale_size_continuous(range = c(0.5,2.5),
                             name = "Relative abundance",
