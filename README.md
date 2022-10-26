@@ -8,7 +8,7 @@ Integrated, spatially explicit trend model for Golden-winged Warblers. Using dat
 
 1.  generate site-level trajectories that are comparable to observed counts - model assessment
 
-2.  Contact Matt to examine the change in habitat using similar methods to the [Betts et al.](https://doi.org/10.1038/s41559-022-01737-8)paper.
+2.  Potentially examine the change in habitat using similar methods to the [Betts et al.](https://doi.org/10.1038/s41559-022-01737-8)paper.
 
 3.  Run the full BBS model for the species using 2021 data.
 
