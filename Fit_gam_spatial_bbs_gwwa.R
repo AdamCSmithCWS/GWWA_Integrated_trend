@@ -95,7 +95,6 @@ stan_data[["alt_data"]] <- NULL
 
 
 
-
 gwwa_dat <- read.csv("data/2009_2021_GWWA_Data_final.csv")
 
 gwwa_dat <- gwwa_dat %>% 
@@ -122,6 +121,7 @@ print(ttp)
 quads <- st_read(dsn = "data",
                  layer = "delorme_conus") 
 st_crs(quads) <- 4326 #WGS 84
+
 quads <- st_transform(quads,crs = st_crs(realized_strata_map))
 
 ## bounding box for plotting quads
@@ -168,8 +168,6 @@ for(i in 1:nrow(out_strat)){
                               paste0(out_strat$State.y[i],as.character(out_strat$PAGE_NUM[i])))
   
 }
-
-
 
 span_func = function(x){
   diff(range(x))
@@ -240,7 +238,6 @@ site_centres_gwwa <- sf::st_join(site_centres_gwwa,realized_strata_map,
 
 
 
-
 gwwa_data <- site_centres_gwwa %>% 
   as.data.frame() %>% 
   select(site_orig,site_gwwa,ST_12,strat) %>% 
@@ -275,6 +272,7 @@ model <- cmdstan_model(mod.file, stanc_options = list("Oexperimental"))
   # out_base <- paste(species_f,sp_data$model,"BBS",sep = "_")
   # model <- cmdstan_model(mod.file, stanc_options = list("Oexperimental"))
   # 
+
 }
 
 ## compiles Stan model (this is only necessary if the model has been changed since it was last run on this machine)
@@ -329,6 +327,7 @@ init_def <- function(){ list(noise_raw = rnorm(stan_data$ncounts*stan_data$use_p
   #                              BETA_raw = rnorm(stan_data$nknots_year,0,0.1),
   #                              beta_raw = matrix(rnorm(stan_data$nknots_year*stan_data$nstrata,0,0.01),nrow = stan_data$nstrata,ncol = stan_data$nknots_year))}
   # 
+
 }
 
 
