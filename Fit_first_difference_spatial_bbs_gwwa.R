@@ -2,28 +2,31 @@ library(bbsBayes)
 library(tidyverse)
 library(cmdstanr)
 
-setwd("C:/GitHub/GWWA_Integrated_trend")
-#bbs_data <- stratify(by = "bbs_usgs")
 bbs_data <- stratify(by = "latlong")
 
 
+#setwd("C:/GitHub/bbsStanBayes")
+
+#setwd("C:/Users/SmithAC/Documents/GitHub/bbsStanBayes")
+
+
+model_sel <- "firstdiff"
 
 species <- "Golden-winged Warbler"
 species_f <- gsub(species,pattern = " ",replacement = "_") # species name without spaces
-
-model_sel <- "gam"
-
 
 
 
 # Stan models -------------------------------------------------------------
 
-
+## spatial versions of both teh slope and gamye exist for the Stan models and can be fit with this script 
 fit_spatial <- TRUE # TRUE = spatial sharing of information and FALSE = non-spatial sharing
 
+## the bbsBayes prepare_data function doesn't create all of the objects required for the Stan versions of the models
+## this source() call over-writes the bbsBayes function prepare_data()
 source("Functions/prepare-data-Stan.R")
 if(fit_spatial){
-  source("Functions/neighbours_define.R") # function to generate spatial neighbourhoods to add to the spatial applications of the models
+source("Functions/neighbours_define.R") # function to generate spatial neighbourhoods to add to the spatial applications of the models
 }
 
 
@@ -31,10 +34,8 @@ if(fit_spatial){
 sp_data <- prepare_data(bbs_data,
                         species_to_run = species,
                         model = model_sel,
-                        min_n_routes = 1,
                         min_max_route_years = 2,
-                        basis = "mgcv")
-
+                        min_n_routes = 1)
 
 
 stan_data <- sp_data
@@ -89,6 +90,13 @@ tmp_alt_data <- stan_data[["alt_data"]]
 stan_data[["stratify_by"]] <- NULL 
 stan_data[["model"]] <- NULL
 stan_data[["alt_data"]] <- NULL
+
+stan_data[["zero_betas"]] <- rep(0,stan_data$nstrata)
+stan_data[["Iy1"]] <- c((stan_data$fixedyear-1):1)
+stan_data[["nIy1"]] <- length(stan_data[["Iy1"]])
+
+stan_data[["Iy2"]] <- c((stan_data$fixedyear+1):stan_data$nyears)
+stan_data[["nIy2"]] <- length(stan_data[["Iy2"]])
 
 
 
@@ -247,27 +255,28 @@ gwwa_data <- site_centres_gwwa %>%
          strat_name = ST_12) %>% 
   mutate(offset = log(n_survey)) 
 
-tmp <- gwwa_data %>% 
-  select(YEAR,site_gwwa,offset) %>% 
-  distinct() %>% 
-  mutate(first_years_gwwa = YEAR-(min(tmp_alt_data$full_data_frame$rYear)-1))
 
-first_years_gwwa_df <- gwwa_data %>% 
-  select(site_gwwa,strat,YEAR) %>% 
-  distinct() %>% 
-  group_by(site_gwwa,strat) %>% 
-  summarise(first_years_gwwa = min(YEAR)-(min(tmp_alt_data$full_data_frame$rYear)-1)) %>% 
-  arrange(site_gwwa) 
+# tmp <- gwwa_data %>% 
+#   select(YEAR,site_gwwa,offset) %>% 
+#   distinct() %>% 
+#   mutate(first_years_gwwa = YEAR-(min(tmp_alt_data$full_data_frame$rYear)-1))
 
-# %>% 
-#   left_join(.,tmp,by = c("first_years_gwwa","site_gwwa")) %>% 
-#   group_by(site_gwwa,first_years_gwwa) %>% 
-#   summarise(offset = mean(offset))
-  
-  
+# first_years_gwwa_df <- gwwa_data %>% 
+#   select(site_gwwa,strat,YEAR) %>% 
+#   distinct() %>% 
+#   group_by(site_gwwa,strat) %>% 
+#   summarise(first_years_gwwa = min(YEAR)-(min(tmp_alt_data$full_data_frame$rYear)-1)) %>% 
+#   arrange(site_gwwa) 
+
+
+#strat_vec_gwwa <- unique(gwwa_data$strat)
+
 stan_data[["nsites_gwwa"]] <- max(gwwa_data$site_gwwa)
 stan_data[["ncounts_gwwa"]] <- nrow(gwwa_data)
 stan_data[["nobservers_gwwa"]] <- max(gwwa_data$observer_gwwa)
+#stan_data[["nstrat_gwwa"]] <- length(strat_vec_gwwa)
+stan_data[["base_year_gwwa"]] <- min(gwwa_data$YEAR-(min(tmp_alt_data$full_data_frame$rYear)-1))-1
+stan_data[["nyears_gwwa"]] <- (stan_data[["nyears"]]-stan_data[["base_year_gwwa"]])
 
 stan_data[["count_gwwa"]] <- gwwa_data$count
 stan_data[["strat_gwwa"]] <- gwwa_data$strat
@@ -275,37 +284,30 @@ stan_data[["year_gwwa"]] <- gwwa_data$YEAR-(min(tmp_alt_data$full_data_frame$rYe
 stan_data[["site_gwwa"]] <- gwwa_data$site_gwwa
 stan_data[["observer_gwwa"]] <- gwwa_data$observer_gwwa
 stan_data[["off_set"]] <- gwwa_data$offset
-stan_data[["first_years_gwwa"]] <- as.integer(first_years_gwwa_df$first_years_gwwa)
-stan_data[["first_year_strats_gwwa"]] <- as.integer(first_years_gwwa_df$strat)
-#stan_data[["first_year_offsets_gwwa"]] <- first_years_gwwa_df$offset
 
 
-# Run model ---------------------------------------------------------------
 
 
-if(fit_spatial){
-  
-mod.file = paste0("models/gam_spatial_bbs_gwwa_CV2.stan")
-out_base <- paste(species_f,"gam_spatial_bbs_gwwa",sep = "_") # text string to identify the saved output from the Stan process unique to species and model, but probably something the user wants to control
-model <- cmdstan_model(mod.file, stanc_options = list("Oexperimental"))
 
-}else{
-  # mod.file = paste0("models/",model_sel,"_bbs_CV.stan")
-  # out_base <- paste(species_f,sp_data$model,"BBS",sep = "_")
-  # model <- cmdstan_model(mod.file, stanc_options = list("Oexperimental"))
-  # 
 
-}
+
+
+
+
+
+
+mod.file = "models/first_difference_spatial_gwwa_bbs_CV.stan"
+out_base <- paste(species_f,"first_difference_Spatial","bbs_gwwa",sep = "_") # text string to identify the saved output from the Stan process unique to species and model, but probably something the user wants to control
+
 
 ## compiles Stan model (this is only necessary if the model has been changed since it was last run on this machine)
-#model <- cmdstan_model(mod.file, stanc_options = list("O1"))
+model <- cmdstan_model(mod.file, stanc_options = list("Oexperimental"))
 
 output_dir <- "output/" # Stan writes output to files as it samples. This is great because it's really stable, but the user needs to think about where to store that output
 
 ### this init_def is something that the JAGS versions don't need. It's a function definition, so perhaps something we'll have to build
 ### into the fit_model function
 ### the slightly annoying thing is that it's model-specific, so we'll need to have a few versions of it
-if(fit_spatial){
 init_def <- function(){ list(noise_raw = rnorm(stan_data$ncounts*stan_data$use_pois,0,0.1),
                              strata_raw = rnorm(stan_data$nstrata,0,0.1),
                              STRATA = 0,
@@ -317,11 +319,10 @@ init_def <- function(){ list(noise_raw = rnorm(stan_data$ncounts*stan_data$use_p
                              sdnoise = runif(1,0.3,1.3),
                              sdobs = runif(1,0.01,0.1),
                              sdste = runif(1,0.01,0.2),
-                             #sdbeta = runif(stan_data$nstrata,0.01,0.1),
                              sdbeta = runif(1,0.01,0.1),
                              sdBETA = runif(1,0.01,0.1),
-                             BETA_raw = rnorm(stan_data$nknots_year,0,0.1),
-                             beta_raw = matrix(rnorm(stan_data$nknots_year*stan_data$nstrata,0,0.01),nrow = stan_data$nstrata,ncol = stan_data$nknots_year),
+                             BETA_raw = rnorm((stan_data$nyears-1),0,0.1),
+                             beta_raw = matrix(rnorm(stan_data$nstrata*(stan_data$nyears-1),0,0.1),nrow = stan_data$nstrata,ncol = stan_data$nyears-1),
                              STE_gwwa = rnorm(stan_data$nsites_gwwa,0,0.1),
                              noise_gwwa_raw = rnorm(stan_data$ncounts*stan_data$use_pois,0,0.1),
                              nu_gwwa = 10,
@@ -330,27 +331,6 @@ init_def <- function(){ list(noise_raw = rnorm(stan_data$ncounts*stan_data$use_p
                              sdnoise_gwwa = runif(1,0.01,0.1),
                              sdobs_gwwa = runif(1,0.01,0.1),
                              sdste_gwwa = runif(1,0.01,0.1))}
-
-}else{
-  # init_def <- function(){ list(noise_raw = rnorm(stan_data$ncounts*stan_data$use_pois,0,0.1),
-  #                              strata_raw = rnorm(stan_data$nstrata,0,0.1),
-  #                              STRATA = 0,
-  #                              nu = 10,
-  #                              sdstrata = runif(1,0.01,0.1),
-  #                              eta = 0,
-  #                              obs_raw = rnorm(stan_data$nobservers,0,0.1),
-  #                              ste_raw = rnorm(stan_data$nsites,0,0.1),
-  #                              sdnoise = runif(1,0.3,1.3),
-  #                              sdobs = runif(1,0.01,0.1),
-  #                              sdste = runif(1,0.01,0.2),
-  #                              sdbeta = runif(stan_data$nstrata,0.01,0.1),
-  #                              #sdbeta = runif(1,0.01,0.1),
-  #                              sdBETA = runif(1,0.01,0.1),
-  #                              BETA_raw = rnorm(stan_data$nknots_year,0,0.1),
-  #                              beta_raw = matrix(rnorm(stan_data$nknots_year*stan_data$nstrata,0,0.01),nrow = stan_data$nstrata,ncol = stan_data$nknots_year))}
-  # 
-
-}
 
 
 
@@ -361,8 +341,8 @@ stanfit <- model$sample(
   iter_warmup=1000,
   parallel_chains = 3,
   #pars = parms,
-  adapt_delta = 0.95,
-  max_treedepth = 14,
+  adapt_delta = 0.8,
+  max_treedepth = 12,
   seed = 123,
   init = init_def,
   output_dir = output_dir,
