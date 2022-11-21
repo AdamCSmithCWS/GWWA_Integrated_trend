@@ -801,17 +801,19 @@ n_samples_t <- n_samples %>%
     return(out_trends)
   }
   
-  BCR_trends <- posterior_trends(region = "BCR") %>%
-    left_join(.,nsites_bcr,by = "BCR")
-  
+  # BCR_trends <- posterior_trends(region = "BCR") %>%
+  #   left_join(.,nsites_bcr,by = "BCR")
+  # 
   #strata_trends <- posterior_trends(region = "ST_12") 
   
   survey_trends <- posterior_trends(region = "survey") 
   
   overall_trends <- posterior_trends()
   
-  trends_out <- bind_rows(overall_trends,survey_trends,BCR_trends)
-  write.csv(trends_out,paste0("trends/",species_f,"_","site_and_bcr_trends_site_model_",firstYear,".csv"),
+  site_trends <- posterior_trends(region = "site_orig")
+  
+  trends_out <- bind_rows(overall_trends,survey_trends,site_trends)
+  write.csv(trends_out,paste0("trends/",species_f,"_","site_trends_site_model_",firstYear,".csv"),
             row.names = FALSE)
   
   
