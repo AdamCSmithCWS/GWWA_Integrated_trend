@@ -14,4 +14,10 @@ There are two key models being explored here. Both models account for the differ
 
 1.  A spatially explicit, site-level trend model that uses recent (15-20 years) data from the BBS and the GWWA surveys to estimate trends and relative abundances at each site (BBS route, and GWWA quad). This site-level model lends itself very well to understanding and estimating the drivers of site-level trends (e.g., post-hoc analyses of factors that are associated with site-level trends, and site-level covariates of trends incorporated into the main model, like Betts et al.).
 
+    ![trend map from site level trends](figures/images/Golden-winged_Warbler_Trends_w_observer_2009.png)
+
 2.  A spatially explicit, 1-degree cell strata, first-difference model that uses data from the full time-series of the BBS (1966-2021) and the GWWA surveys (2009-2021) to integrate information on population change, while accounting for site and stratum relative abundance. This model does a good job of generating spatially explicit estimates of trends that also lend themselves to broader-scale summaries (e.g., BCR summaries).
+
+    ![](figures/images/first_difference_trajectory.png)
+
+    ![](figures/images/first_difference_trend_maps.png)
