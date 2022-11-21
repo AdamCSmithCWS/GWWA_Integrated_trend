@@ -336,14 +336,15 @@ init_def <- function(){ list(noise_raw = rnorm(stan_data$ncounts*stan_data$use_p
 
 stanfit <- model$sample(
   data=stan_data,
-  refresh=100,
-  chains=3, iter_sampling=1000,
+  refresh=200,
+  chains=4, 
+  iter_sampling=2000,
   iter_warmup=1000,
-  parallel_chains = 3,
+  parallel_chains = 4,
   #pars = parms,
   adapt_delta = 0.8,
   max_treedepth = 12,
-  seed = 123,
+  #seed = 123,
   init = init_def,
   output_dir = output_dir,
   output_basename = out_base)
