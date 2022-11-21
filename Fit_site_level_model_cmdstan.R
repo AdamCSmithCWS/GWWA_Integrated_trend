@@ -811,7 +811,7 @@ n_samples_t <- n_samples %>%
   overall_trends <- posterior_trends()
   
   trends_out <- bind_rows(overall_trends,survey_trends,BCR_trends)
-  write.csv(trends_out,paste0("trends/survey_and_bcr_trends_w_observers_",species_f,"_",firstYear,".csv"),
+  write.csv(trends_out,paste0("trends/",species_f,"_","site_and_bcr_trends_site_model_",firstYear,".csv"),
             row.names = FALSE)
   
   
