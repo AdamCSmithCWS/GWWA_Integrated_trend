@@ -12,6 +12,7 @@ library(bbsBayes)
 library(tidyverse)
 library(cmdstanr)
 library(patchwork)
+library(sf)
 source("Functions/animated_maps_function.R")
 source("Functions/generate_map_data.R")
 ## overwriting two of the bbsBayes functions with versions that accept Stan output
@@ -74,9 +75,9 @@ bcr_latlong <- st_join(x = latlong_map,
                            y = bcr_map,
                        largest = TRUE)
 
-strata_map <- bcr_latlong %>%
-  inner_join(.,strat_df,by = c("ST_12" = "strat_name")) %>% 
-  rename(stratum = "ST_12")
+# strata_map <- bcr_latlong %>%
+#   inner_join(.,strat_df,by = c("ST_12" = "strat_name")) %>% 
+#   rename(stratum = "ST_12")
 
 
 latlong_by_bcr <- bcr_latlong %>% 
@@ -175,6 +176,12 @@ tmp <- inds$data_summary %>%
 
 inds_all_out <- bind_rows(inds_all_out,tmp)
 
+
+
+
+
+pdf(file = paste0("Figures/",out_base,".pdf"),width = 11,height = 8.5)
+
 for(scale in c("stratum","bcr")){
   if(scale == "stratum"){
     ind_tmp <- inds
@@ -182,8 +189,12 @@ for(scale in c("stratum","bcr")){
     ind_tmp <- inds_bcr
   }
 trends <- generate_trends(ind_tmp)
-trends_short <- generate_trends(ind_tmp,Min_year = 2007)
-
+trends_short <- generate_trends(ind_tmp,Min_year = 2009)
+if(scale == "stratum"){
+  map <- generate_map(trends,select = TRUE,stratify_by = strat_sel,species = species)
+mapshort <- generate_map(trends_short,select = TRUE,stratify_by = strat_sel,species = species)
+print(map + mapshort)
+}
 trends <- trends %>% 
   mutate(model = model_sel,
          species = species,
@@ -202,16 +213,75 @@ trends_short_long <- bind_rows(trends_short_long,trends_short)
 
 }
 
+
+
+# plotting the trajectories and trends -----------------------------------------------
+
+
+t1 <- trajs[["Continental"]] 
+t2 <- trajshort[["Continental"]]
+print(t1 + t2)
+
+
+
+for(i in names(trajs_bcr)){
+  if(i == "Continental"){next}
+  t1 <- trajs_bcr[[i]] 
+  t2 <- trajs_bcrshort[[i]]
+  print(t1 + t2)
+  
+  
+}
+
+for(i in names(trajs)){
+  if(i == "Continental"){next}
+  t1 <- trajs[[i]] 
+  t2 <- trajshort[[i]]
+  # st <- str_trunc(t1$labels$title, width = 8,
+  #                 side = "left",
+  #                 ellipsis = "")
+  # if(!is.na(alt_n)){
+  #   n1 <- ind$data_summary %>% 
+  #     mutate(Reg_traj = gsub(Region_alt,pattern = "[[:punct:]]",replacement = "")) %>% 
+  #     filter(Reg_traj == gsub(i,pattern = "[[:punct:]]",replacement = "")) #,
+  #   #Region_type == "stratum"
+  #   t1 <- t1 +
+  #     geom_ribbon(data = n1, aes(x = Year,y = Index,ymin = Index_q_0.025,ymax = Index_q_0.975),
+  #                 fill = grey(0.5),alpha = 0.2)+
+  #     geom_line(data = n1, aes(x = Year,y = Index),
+  #               colour = grey(0.5))
+  #   
+  #   n2 <- ind$data_summary %>% 
+  #     filter(Region_alt == gsub(i,pattern = "_",replacement = "-"),
+  #            #Region_type == "stratum",
+  #            Year >= 2004)
+  #   t2 <- t2 +
+  #     geom_ribbon(data = n2, aes(x = Year,y = Index,ymin = Index_q_0.025,ymax = Index_q_0.975),
+  #                 fill = grey(0.5),alpha = 0.2)+
+  #     geom_line(data = n2, aes(x = Year,y = Index),
+  #               colour = grey(0.5))
+  # }
+   print(t1 + t2)
+  
+}
+
+
+# more trend maps ---------------------------------------------------------
+fyrs <- c(1966,seq(1971,2011,by = 5))
+for(y1 in fyrs){
+  y2 <- y1 + 10
+trends_short <- generate_trends(ind,Min_year = y1,Max_year = y2)
+  mapshort <- generate_map(trends_short,select = TRUE,stratify_by = strat_sel,species = species)
+  print(mapshort)
+
+}
+
+dev.off()
+
+
 #} # end model_sel
 
-  # trends_roll_out 
-  # 
-  # trends_ann_out 
-  # 
-  # ind_all_out
-  # inds_all_out
-  # 
-  # 
+
 
   write.csv(trends_short_long,
             paste0("trends/",species_f,model_sel,"_long_short_trends.csv"))
