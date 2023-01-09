@@ -360,16 +360,23 @@ car_stan_dat <- neighbours_define(real_strata_map = site_centres,
                                   strat_indicator = "site",
                                   add_map = strata_map)
 
+site_centres2 <- site_centres %>% 
+  st_transform(.,crs = 4269) %>% 
+  st_coordinates()
+  
 site_list_temp <- site_centres %>% 
+  mutate(Longitude = site_centres2[,1],
+         Latitude = site_centres2[,2]) %>% 
   as.data.frame() %>% 
-  select(site_orig,site,BCR,ST_12,AREA_1,PROVSTATE,COUNTRY)
+  select(site_orig,site,BCR,ST_12,AREA_1,PROVSTATE,COUNTRY,
+         Longitude,Latitude)
 
 
 data_all <- data_all %>% 
   left_join(.,site_list_temp,by = c("site_orig"))
 site_list <- data_all %>% 
   as.data.frame() %>% 
-  select(site_orig,site,site_bbs,site_gwwa,survey,ST_12,BCR,COUNTRY) %>% 
+  select(site_orig,site,site_bbs,site_gwwa,survey,ST_12,BCR,COUNTRY,Latitude, Longitude) %>% 
   distinct() %>% 
   arrange(site)
 
@@ -494,7 +501,8 @@ save(list = c("out_base",
               "species_f",
               "output_dir",
               "car_stan_dat",
-              "site_centres"),
+              "site_centres",
+              "data_all"),
      file = sp_file)
 
 
@@ -503,6 +511,9 @@ save(list = c("out_base",
 
 #stopCluster(cl = cluster)
 
+# post analysis summary ---------------------------------------------------
+
+
 
 load(sp_file)
 slope_stanfit <- readRDS(paste0(output_dir,"/",out_base,"_gamye_iCAR.RDS"))
@@ -510,82 +521,6 @@ slope_stanfit <- readRDS(paste0(output_dir,"/",out_base,"_gamye_iCAR.RDS"))
 
 
 
-# post loop analysis ------------------------------------------------------
-
-
-# 
-# launch_shinystan(slope_stanfit) 
-# 
-# 
-# library(loo)
-# library(tidyverse)
-# 
-# log_lik_1 <- extract_log_lik(slope_stanfit, merge_chains = FALSE)
-# r_eff <- relative_eff(exp(log_lik_1), cores = 10)
-# loo_1 <- loo(log_lik_1, r_eff = r_eff, cores = 10)
-# print(loo_1)
-# 
-# doy = ((jags_data$month-4)*30+jags_data$day)
-# plot(loo_1$pointwise[,"influence_pareto_k"],log(stan_data$count+1))
-# plot(loo_1$pointwise[,"influence_pareto_k"],doy)
-# plot(doy,log(stan_data$count+1))
-# 
-# 
-# 
-# loo2 = data.frame(loo_1$pointwise)
-# 
-# loo2$flag = cut(loo2$influence_pareto_k,breaks = c(0,0.5,0.7,1,Inf))
-# dts = data.frame(count = stan_data$count,
-#                  obser = stan_data$obser,
-#                  route = stan_data$route,
-#                  year = stan_data$year)
-# loo2 = cbind(loo2,dts)
-# 
-# plot(log(loo2$count+1),loo2$influence_pareto_k)
-# 
-# obserk = loo2 %>% group_by(obser) %>% 
-#   summarise(n = log(n()),
-#             mean_k = mean(influence_pareto_k),
-#             max_k = max(influence_pareto_k),
-#             sd_k = sd(influence_pareto_k),
-#             mean_looic = mean(looic),
-#             mean_ploo = mean(p_loo))
-# plot(obserk$n,obserk$max_k)
-# plot(obserk$n,obserk$mean_k)
-# plot(obserk$n,obserk$sd_k)
-# plot(obserk$n,obserk$mean_looic)
-# plot(obserk$n,obserk$mean_ploo)
-# 
-# 
-# yeark = loo2 %>% group_by(year) %>% 
-#   summarise(n = n(),
-#             mean_k = mean(influence_pareto_k),
-#             q90 = quantile(influence_pareto_k,0.9),
-#             max_k = max(influence_pareto_k),
-#             sd_k = sd(influence_pareto_k),
-#             route = mean(route),
-#             sd = sd(route))
-# plot(yeark$year,yeark$max_k)
-# plot(yeark$year,yeark$mean_k)
-# plot(yeark$year,yeark$sd_k)
-# plot(yeark$year,yeark$q90)
-# 
-# routek = loo2 %>% group_by(route) %>% 
-#   summarise(n = n(),
-#             mean_k = mean(influence_pareto_k),
-#             q90_k = quantile(influence_pareto_k,0.9),
-#             max_k = max(influence_pareto_k),
-#             sd_k = sd(influence_pareto_k),
-#             route = mean(route),
-#             sd = sd(route))
-# plot(routek$route,routek$max_k)
-# plot(routek$n,routek$mean_k)
-# 
-# plot(routek$route,routek$mean_k)
-# plot(routek$route,routek$sd_k)
-# plot(routek$route,routek$q90_k)
-# 
-# 
 
 
 # PLOTTING and trend output -----------------------------------------------
@@ -613,6 +548,63 @@ route_trajectories <- TRUE #set to FALSE to speed up mapping
 LC = 0.05
 UC = 0.95
 library(HDInterval)
+
+
+# site-level betas and alphas ---------------------------------------------
+
+
+betas <- posterior_samples(slope_stanfit,
+                                  "beta",
+                                  dims = c("site")) %>% 
+  posterior_sums(quantiles = NULL,
+                 ci = 0.9,#c(0.025,0.5,0.975),
+                 dims = "site") %>% 
+  select(site,mean,median,lci,uci) %>% 
+  rename(beta_mean = mean,
+         beta_median = median,
+         beta_lci = lci,
+         beta_uci = uci) %>% 
+  mutate(trend = (exp(beta_median)-1)*100,
+         trend_lci = (exp(beta_lci)-1)*100,
+         trend_uci =(exp(beta_uci)-1)*100) 
+  
+
+alphas <- posterior_samples(slope_stanfit,
+                                  "alpha",
+                                  dims = c("site"))%>% 
+  posterior_sums(quantiles = NULL,
+                 ci = 0.9,#c(0.025,0.5,0.975),
+                 dims = "site") %>% 
+  select(site,mean,median,lci,uci) %>% 
+  rename(alpha_mean = mean,
+         alpha_median = median,
+         alpha_lci = lci,
+         alpha_uci = uci) %>% 
+  mutate(abundance = exp(alpha_median),
+         abundance_lci = exp(alpha_lci),
+         abundance_uci =exp(alpha_uci)) 
+
+param_summary <- inner_join(betas,alphas,
+                            by = "site") %>% 
+  left_join(.,site_list,
+            by = "site") %>% 
+  rename(country_stateprov_bcr = ST_12) %>% 
+  select(-site)
+
+write.csv(param_summary,
+          "trends/site_level_model_parameter_estimates.csv")
+
+# obs_mean_counts <- data_all %>% 
+#   ungroup() %>% 
+#   mutate(ncounts = ifelse(survey == 1,1,exp(offset)/5)) %>% 
+#   group_by(site_orig,site,site_bbs,site_gwwa,
+#            survey,ST_12,BCR,COUNTRY,Longitude, Latitude) %>% 
+#   summarise(obs_mean = mean(count/ncounts),
+#             .groups = "keep")
+
+
+
+
 
 
 #if(route_trajectories){
