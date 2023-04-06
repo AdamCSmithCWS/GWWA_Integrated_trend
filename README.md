@@ -12,7 +12,7 @@ Integrated, spatially explicit trend model for Golden-winged Warblers. Using dat
 
 There are two key models being explored here. Both models account for the different observation processes in the BBS and the GWWA surveys, as well as site- and observer-level variation in counts.
 
-1.  A spatially explicit, site-level trend model that uses recent (15-20 years) data from the BBS and the GWWA surveys to estimate trends and relative abundances at each site (BBS route, and GWWA quad). This site-level model lends itself very well to understanding and estimating the drivers of site-level trends (e.g., post-hoc analyses of factors that are associated with site-level trends, and site-level covariates of trends incorporated into the main model, like Betts et al.).
+1.  A spatially explicit, site-level trend model that uses recent (15-20 years) data from the BBS and the [GWWA surveys](https://doi.org/10.1111/jofo.12220) to estimate trends and relative abundances at each site (BBS route, and GWWA quad). This site-level model lends itself very well to understanding and estimating the drivers of site-level trends (e.g., post-hoc analyses of factors that are associated with site-level trends, and site-level covariates of trends incorporated into the main model, like Betts et al.).
 
     ![trend map from site level trends](figures/images/Golden-winged_Warbler_Trends_w_observer_2009.png)
 
