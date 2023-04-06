@@ -2,11 +2,11 @@
 
 ## Integrated spatial trend models for BBS and GWWA surveys
 
-Integrated, spatially explicit trend model for Golden-winged Warblers. Using data from the BBS and a GWWA-specific survey. The species has declined in some portions of it's range to a point where it is very rarely detected during BBS surveys. As a result, there is effectively no new information coming from the BBS to help understand the species trends.
+Golden-winged warblers (GWWA) have experienced severe population declines throughout their breeding range, although the rates of decline appear to differ between the geographically distinct Appalachian and Great Lakes regional populations. We used an integrated, spatially -explicit trend model to leverage both long-term data from the BBS and a more recent targeted GWWA survey, and thus generate range-wide site-level trend estimates, including for areas where BBS surveys no longer detect GWWA due to extreme local declines. We integrated data from the two surveys by sharing information on annual differences in relative abundance across the species range, using a first-difference time-series, that used an intrinsic conditional autoregressive component to model spatial dependence. 
 
-### To Do
+This spatially explicit trend model for Golden-winged Warblers, integrates data from the BBS and a GWWA-specific survey. The species has declined in some portions of it's range to a point where it is very rarely detected during BBS surveys in the last 15-20 years. As a result, there is effectively no new information coming from the BBS to help understand population trends. The species-specific surveys target effort to increase the probability of detection when the species is present, leading to much higher mean counts of birds observed at a location in each year, and thereby more information to estimate changes over time. 
 
-1.  Examine the change in habitat using similar methods to the [Betts et al.](https://doi.org/10.1038/s41559-022-01737-8)paper.
+This project is a useful example of where shared information on population trends in a given location can be used to integrate data from different monitoring programs.  
 
 ## Models
 
@@ -21,3 +21,9 @@ There are two key models being explored here. Both models account for the differ
     ![](figures/images/first_difference_trajectory.png)
 
     ![](figures/images/first_difference_trend_maps.png)
+    
+
+### To Do
+
+1.  Examine the change in habitat using similar methods to the [Betts et al.](https://doi.org/10.1038/s41559-022-01737-8)paper.
+
