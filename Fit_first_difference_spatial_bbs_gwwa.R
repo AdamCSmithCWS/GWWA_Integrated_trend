@@ -345,7 +345,7 @@ stanfit <- model$sample(
   adapt_delta = 0.8,
   max_treedepth = 12,
   #seed = 123,
-  init = init_def,
+  #init = init_def,
   output_dir = output_dir,
   output_basename = out_base)
 

@@ -287,6 +287,18 @@ dev.off()
             paste0("trends/",species_f,model_sel,"_long_short_trends.csv"))
   write.csv(inds_all_out,
             paste0("trends/",species_f,model_sel,"_trajectories.csv"))
+  
+  inds_strata <- inds_all_out %>% 
+    filter(Region_type == "stratum")
+  write.csv(inds_strata,
+            paste0("trends/",species_f,model_sel,"_annual_relative_abundance_grid_cell.csv"))
+  
+  bcr_latlong <- bcr_latlong %>% 
+    mutate(Region = ST_12,
+           BCR_n = as.integer(str_extract(bcr,"[[:digit:]]{1,}")))
+  tmp = ggplot(bcr_latlong)+geom_sf(aes(fill = BCR_n))+scale_fill_viridis_c()
+  tmp
+  saveRDS(bcr_latlong,"trends/bbsBayes_latlong_strata_map_with_BCRMajority.rds")
 #   
 #   # overplot the trends by BCR country and survey-wide --------------
 # bcrs <- trends_short_long %>% 
