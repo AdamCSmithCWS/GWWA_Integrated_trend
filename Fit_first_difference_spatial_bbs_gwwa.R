@@ -338,7 +338,7 @@ stanfit <- model$sample(
   data=stan_data,
   refresh=200,
   chains=4, 
-  iter_sampling=1000,
+  iter_sampling=2000,
   iter_warmup=2000,
   parallel_chains = 4,
   #pars = parms,
