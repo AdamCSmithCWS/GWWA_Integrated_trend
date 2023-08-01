@@ -190,8 +190,8 @@ transformed parameters {
 // first half of time-series - runs backwards from fixedyear
   for(t in Iy1){ 
     beta[,t] = (sdbeta * beta_raw[,t]) + BETA[t];
-    yeareffect[,t] = yeareffect[,t+1] + beta[,t];
-    YearEffect[t] = YearEffect[t+1] + BETA[t]; // hyperparameter trajectory interesting to monitor but no direct inference
+    yeareffect[,t] = yeareffect[,t+1] - beta[,t];
+    YearEffect[t] = YearEffect[t+1] - BETA[t]; // hyperparameter trajectory interesting to monitor but no direct inference
   }
 // second half of time-series - runs forwards from fixedyear
    for(t in Iy2){
@@ -223,7 +223,7 @@ transformed parameters {
 for(s in 1:nstrata){
     yeareffect_gwwa[s,1] = 0;
    for(t in 2:nyears_gwwa){
-    yeareffect_gwwa[s,t] = yeareffect_gwwa[s,t-1] + beta[s,(t+base_year_gwwa)];
+    yeareffect_gwwa[s,t] = yeareffect_gwwa[s,t-1] + beta[s,(t+base_year_gwwa)]; // running forward always 
   }
 }
 

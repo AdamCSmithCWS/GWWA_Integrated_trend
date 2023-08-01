@@ -100,6 +100,28 @@ stan_data[["nIy2"]] <- length(stan_data[["Iy2"]])
 
 
 
+
+bbs_summary_pre_1990 <- sp_data$alt_data$full_data_frame  %>% 
+  filter(rYear < 1991) %>% 
+  group_by(strat_name) %>% 
+  summarise(log_mean_count = log(mean(count)),
+            .groups = "keep") %>% 
+  mutate(time_period = "Pre-1990")
+
+
+bbs_summary_post_2000 <- sp_data$alt_data$full_data_frame  %>% 
+  filter(rYear > 2000) %>% 
+  group_by(strat_name) %>% 
+  summarise(log_mean_count = log(mean(count)),
+            .groups = "keep") %>% 
+  mutate(time_period = "Post-2000")
+
+
+bbs_summary <- bind_rows(bbs_summary_pre_1990,
+                         bbs_summary_post_2000) %>% 
+  mutate(survey = "BBS")
+
+
 # Add in gwwa data --------------------------------------------------------
 
 
@@ -256,6 +278,51 @@ gwwa_data <- site_centres_gwwa %>%
   mutate(offset = log(n_survey)) 
 
 
+
+gwwa_summary <- gwwa_data  %>% 
+  group_by(strat_name) %>% 
+  summarise(log_mean_count = log(mean(count)),
+            .groups = "keep") %>% 
+  mutate(time_period = "Post-2000",
+         survey = "GWWA")
+
+datasets_summary <- bind_rows(bbs_summary,
+                              gwwa_summary) %>% 
+  mutate(time_period = factor(time_period,
+                              levels = c("Pre-1990","Post-2000"),
+                              ordered = TRUE))
+
+map_summary <- realized_strata_map %>% 
+  left_join(datasets_summary,
+            by = c("ST_12" = "strat_name"))
+
+base_state_map <- bbsBayes::load_map(stratify_by = "state")
+
+data_bounding_box <- map_summary %>% 
+  sf::st_bbox()
+
+
+map_gwwa_data <- ggplot()+
+  geom_sf(data = base_state_map,
+          fill = NA,
+          colour = grey(0.8))+
+  geom_sf(data = map_summary,
+          aes(fill = log_mean_count))+
+  coord_sf(xlim = data_bounding_box[c("xmin","xmax")],
+           ylim = data_bounding_box[c("ymin","ymax")])+
+  facet_grid(cols = vars(time_period),rows = vars(survey))+
+  theme_bw() +
+  scale_fill_viridis_c(na.value = "grey70")
+
+print(map_gwwa_data)
+
+pdf(file = "Figures/Survey_mean_counts_comparison.pdf",
+    width = 8, height = 7)
+print(map_gwwa_data)
+dev.off()
+
+
+
 # tmp <- gwwa_data %>% 
 #   select(YEAR,site_gwwa,offset) %>% 
 #   distinct() %>% 
@@ -366,6 +433,8 @@ save(list = c("stanfit","stan_data",
               "out_base",
               "fit_summary"),
      file = paste0(output_dir,"/",out_base,"_Stan_fit.RData"))
+
+
 
 
 
