@@ -49,6 +49,7 @@ trends_11 <- bbsBayes2::generate_trends(inds,min_year = 2011)
 map_t <- bbsBayes2::plot_map(trends)
 map_t_05 <- bbsBayes2::plot_map(trends_05)
 map_t_11 <- bbsBayes2::plot_map(trends_11)
+map_t_09 <- bbsBayes2::plot_map(trends_09)
 
 maps <- map_t / map_t_05 
 
@@ -57,6 +58,9 @@ print(map_t)
 dev.off()
 pdf(paste0("figures/bbs_2005_term_trends.pdf"))
 print(map_t_05)
+dev.off()
+pdf(paste0("figures/bbs_2009_term_trends.pdf"))
+print(map_t_09)
 dev.off()
 
 pdf(paste0("figures/bbs_2011_term_trends.pdf"))
