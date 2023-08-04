@@ -71,6 +71,7 @@ ind <- generate_indices(jags_mod = stanfit,
 #   distinct()
 
 
+
 bcr_latlong <- st_join(x = latlong_map,
                            y = bcr_map,
                        largest = TRUE)
@@ -299,6 +300,55 @@ dev.off()
   tmp = ggplot(bcr_latlong)+geom_sf(aes(fill = BCR_n))+scale_fill_viridis_c()
   tmp
   saveRDS(bcr_latlong,"trends/bbsBayes_latlong_strata_map_with_BCRMajority.rds")
+  
+
+# Animated abundance and trend map ----------------------------------------
+
+  animated_trend_map(fit = stanfit,
+                                 rawdata = stan_data,
+                                 stratification = strat_sel,
+                                 alt_n = NA,
+                                 firstYear = NULL,
+                                 lastYear = NULL,
+                                 trend_length = 10,
+                                 res_mag = 3,
+                                 dir_out = "animations",
+                                 file_name_prefix = "_",
+                                 species = species,
+                                 plot_trend = TRUE,
+                                 plot_abundance = FALSE,
+                     mask_backcast = FALSE)
+  
+  
+  
+  
+  animated_trend_map(fit = stanfit,
+                     rawdata = stan_data,
+                     stratification = strat_sel,
+                     alt_n = NA,
+                     firstYear = NULL,
+                     lastYear = NULL,
+                     trend_length = 1,
+                     res_mag = 3,
+                     dir_out = "animations",
+                     file_name_prefix = "_",
+                     species = species,
+                     plot_trend = FALSE,
+                     plot_abundance = TRUE,
+                     mask_backcast = FALSE)
+  
+  
+  
+  
+  
+  
+  
+  
+  
+
+# archive to delete -------------------------------------------------------
+
+  
 #   
 #   # overplot the trends by BCR country and survey-wide --------------
 # bcrs <- trends_short_long %>% 

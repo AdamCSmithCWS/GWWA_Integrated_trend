@@ -37,7 +37,7 @@ generate_map_data <- function(trend = NULL,
   #                                      package = "bbsBayes"),
   #                    layer = maps[[stratify_by]],
   #                    quiet = TRUE)
-  map <- load_map(stratify_by = stratify_by)
+  map <- bbsBayes::load_map(stratify_by = stratify_by)
   
   
   breaks <- c(-7, -4, -2, -1, -0.5, 0.5, 1, 2, 4, 7)
@@ -52,8 +52,8 @@ generate_map_data <- function(trend = NULL,
   trend$Tplot <- cut(trend$Tplot,breaks = c(-Inf, breaks, Inf),labels = labls)
   # tlev <- levels(trend$Tplot)
   # trend$Tplot <- factor(trend$Tplot,levels = c(tlev))
-  trend$ST_12 = trend$Region
-  map = dplyr::left_join(x = map,y = trend,by = "ST_12")
+  trend$ST_12 <- trend$Region
+  map = dplyr::inner_join(x = map,y = trend,by = "ST_12")
   
   if(species != ""){
     ptit = paste(species,"trends",fyr,"-",lyr)
@@ -79,8 +79,8 @@ generate_map_data <- function(trend = NULL,
   #   ggplot2::ylab("")+
   #   ggplot2::xlab("")+
   #   ggplot2::labs(title = ptit)+
-   mp_theme <- ggplot2::theme(legend.position = "right", line = ggplot2::element_line(size = 0.4),
-                   rect = ggplot2::element_rect(size = 0.1),
+   mp_theme <- ggplot2::theme(legend.position = "right", line = element_line(linewidth = 0.4),
+                   rect = ggplot2::element_rect(linewidth = 0.1),
                    axis.text = ggplot2::element_blank(),
                    axis.line = ggplot2::element_blank())
    mp_colour_scale <- ggplot2::scale_colour_manual(values = map_palette, aesthetics = c("fill"),
