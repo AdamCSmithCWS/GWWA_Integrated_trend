@@ -1,13 +1,11 @@
-library(bbsBayes)
+library(bbsBayes) ## remotes::install_github("bbsBayes/bbsBayes")
+# this package has access to BBS data through the 2021 field season
+# bbsBayes has been replaced by bbsBayes2 "github.com/bbsBayes/bbsBayes2"
 library(tidyverse)
 library(cmdstanr)
 
 bbs_data <- stratify(by = "latlong")
 
-
-#setwd("C:/GitHub/bbsStanBayes")
-
-#setwd("C:/Users/SmithAC/Documents/GitHub/bbsStanBayes")
 
 
 model_sel <- "firstdiff"
@@ -321,6 +319,24 @@ pdf(file = "Figures/Survey_mean_counts_comparison.pdf",
 print(map_gwwa_data)
 dev.off()
 
+map_gwwa_data <- ggplot()+
+  geom_sf(data = base_state_map,
+          fill = NA,
+          colour = grey(0.5))+
+  geom_sf(data = map_summary,
+          aes(fill = log_mean_count))+
+  coord_sf(xlim = data_bounding_box[c("xmin","xmax")],
+           ylim = data_bounding_box[c("ymin","ymax")])+
+  facet_grid(cols = vars(time_period),rows = vars(survey))+
+  theme_bw() +
+  scale_fill_viridis_c(na.value = "grey70")
+
+png(filename = "Mean_counts_by_survey_and_period.png",
+    res = 300,
+    width = 8, height = 7, units = "in")
+print(map_gwwa_data)
+dev.off()
+
 
 
 # tmp <- gwwa_data %>% 
@@ -375,29 +391,29 @@ output_dir <- "output/" # Stan writes output to files as it samples. This is gre
 ### this init_def is something that the JAGS versions don't need. It's a function definition, so perhaps something we'll have to build
 ### into the fit_model function
 ### the slightly annoying thing is that it's model-specific, so we'll need to have a few versions of it
-init_def <- function(){ list(noise_raw = rnorm(stan_data$ncounts*stan_data$use_pois,0,0.1),
-                             strata_raw = rnorm(stan_data$nstrata,0,0.1),
-                             STRATA = 0,
-                             nu = 10,
-                             sdstrata = runif(1,0.01,0.1),
-                             eta = 0,
-                             obs_raw = rnorm(stan_data$nobservers,0,0.1),
-                             ste_raw = rnorm(stan_data$nsites,0,0.1),
-                             sdnoise = runif(1,0.3,1.3),
-                             sdobs = runif(1,0.01,0.1),
-                             sdste = runif(1,0.01,0.2),
-                             sdbeta = runif(1,0.01,0.1),
-                             sdBETA = runif(1,0.01,0.1),
-                             BETA_raw = rnorm((stan_data$nyears-1),0,0.1),
-                             beta_raw = matrix(rnorm(stan_data$nstrata*(stan_data$nyears-1),0,0.1),nrow = stan_data$nstrata,ncol = stan_data$nyears-1),
-                             STE_gwwa = rnorm(stan_data$nsites_gwwa,0,0.1),
-                             noise_gwwa_raw = rnorm(stan_data$ncounts*stan_data$use_pois,0,0.1),
-                             nu_gwwa = 10,
-                             obs_gwwa_raw = rnorm(stan_data$nobservers_gwwa,0,0.1),
-                             ste_gwwa_raw = rnorm(stan_data$nsites_gwwa,0,0.1),
-                             sdnoise_gwwa = runif(1,0.01,0.1),
-                             sdobs_gwwa = runif(1,0.01,0.1),
-                             sdste_gwwa = runif(1,0.01,0.1))}
+# init_def <- function(){ list(noise_raw = rnorm(stan_data$ncounts*stan_data$use_pois,0,0.1),
+#                              strata_raw = rnorm(stan_data$nstrata,0,0.1),
+#                              STRATA = 0,
+#                              nu = 10,
+#                              sdstrata = runif(1,0.01,0.1),
+#                              eta = 0,
+#                              obs_raw = rnorm(stan_data$nobservers,0,0.1),
+#                              ste_raw = rnorm(stan_data$nsites,0,0.1),
+#                              sdnoise = runif(1,0.3,1.3),
+#                              sdobs = runif(1,0.01,0.1),
+#                              sdste = runif(1,0.01,0.2),
+#                              sdbeta = runif(1,0.01,0.1),
+#                              sdBETA = runif(1,0.01,0.1),
+#                              BETA_raw = rnorm((stan_data$nyears-1),0,0.1),
+#                              beta_raw = matrix(rnorm(stan_data$nstrata*(stan_data$nyears-1),0,0.1),nrow = stan_data$nstrata,ncol = stan_data$nyears-1),
+#                              STE_gwwa = rnorm(stan_data$nsites_gwwa,0,0.1),
+#                              noise_gwwa_raw = rnorm(stan_data$ncounts*stan_data$use_pois,0,0.1),
+#                              nu_gwwa = 10,
+#                              obs_gwwa_raw = rnorm(stan_data$nobservers_gwwa,0,0.1),
+#                              ste_gwwa_raw = rnorm(stan_data$nsites_gwwa,0,0.1),
+#                              sdnoise_gwwa = runif(1,0.01,0.1),
+#                              sdobs_gwwa = runif(1,0.01,0.1),
+#                              sdste_gwwa = runif(1,0.01,0.1))}
 
 
 
@@ -405,16 +421,18 @@ stanfit <- model$sample(
   data=stan_data,
   refresh=200,
   chains=4, 
-  iter_sampling=2000,
+  iter_sampling=4000,
   iter_warmup=2000,
   parallel_chains = 4,
+  thin = 2,
   #pars = parms,
   adapt_delta = 0.8,
   max_treedepth = 12,
   #seed = 123,
   #init = init_def,
   output_dir = output_dir,
-  output_basename = out_base)
+  output_basename = out_base,
+  show_exceptions = FALSE)
 
 # shinystan::launch_shinystan(shinystan::as.shinystan(stanfit))
 

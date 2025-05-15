@@ -235,7 +235,7 @@ neighbours_define <- function(real_strata_map = realized_strata_map, #sf map of 
   
     ggp <- ggp + 
       geom_segment(data=DA,aes(x = long, y = lat,xend=long_to,yend=lat_to),
-                   inherit.aes = FALSE,size=0.3,alpha=0.4) +
+                   inherit.aes = FALSE,linewidth=0.3,alpha=0.4) +
       geom_sf(data = vintj,alpha = 0,colour = grey(0.95))+ 
       geom_sf(data = real_strata_map,alpha = 0,colour = grey(0.85))+
       geom_sf_text(aes(label = strat_lab),size = 5,alpha = 0.7,colour = "black")+

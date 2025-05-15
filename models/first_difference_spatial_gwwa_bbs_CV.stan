@@ -149,7 +149,7 @@ parameters {
   real STE_gwwa; 
   vector[ncounts_gwwa*use_pois] noise_gwwa_raw;             // over-dispersion if use_pois == 1
   real<lower=3> nu_gwwa; // df of t-distribution > 3 so that it has a finite mean, variance, kurtosis
-  vector[nobservers_gwwa] obs_gwwa_raw;    // sd of year effects
+  vector[nobservers_gwwa] obs_gwwa_raw;    // observer effects for gwwa survey
   real<lower=0> sdnoise_gwwa;    // sd of over-dispersion
   real<lower=0> sdobs_gwwa;    // sd of observer effects
   real<lower=0> sdste_gwwa;    // sd of site effects
@@ -200,13 +200,13 @@ transformed parameters {
     YearEffect[t] = YearEffect[t-1] + BETA[t-1]; 
   }
  
-   strata = (sdstrata*strata_raw) + STRATA;
+   strata = (sdstrata*strata_raw) + STRATA; //strata-level terms are centered on teh BBS intercept (STRATA = mu_m)
 
 
   for(i in 1:ntrain){
     real noise;
     real obs = sdobs*obs_raw[observer_tr[i]];
-    real ste = sdste*ste_raw[site_tr[i]]; // site intercepts
+    real ste = sdste*ste_raw[site_tr[i]]; // site intercepts are zero-centered for BBS
     if(use_pois){
     noise = sdnoise*noise_raw[i];
     }else{
@@ -232,7 +232,7 @@ for(s in 1:nstrata){
   for(i in 1:ncounts_gwwa){
     real noise;
     real obs = sdobs_gwwa*obs_gwwa_raw[observer_gwwa[i]];
-    real ste = (sdste_gwwa*ste_gwwa_raw[site_gwwa[i]] + STE_gwwa);
+    real ste = (sdste_gwwa*ste_gwwa_raw[site_gwwa[i]] + STE_gwwa); // gwwa survey intercepts are centered on the species-specific survey intercept (STE_gwwa = mu_m)
     if(use_pois){
     noise = sdnoise_gwwa*noise_gwwa_raw[i];
     }else{
@@ -291,7 +291,7 @@ model {
   sdste_gwwa ~ student_t(3,0,1); //prior on sd of site effects
   obs_gwwa_raw ~ std_normal(); // ~ student_t(3,0,1);//observer effects
   ste_gwwa_raw ~ std_normal();//site effects
-  sum(ste_gwwa_raw) ~ normal(0,0.001*nsites_gwwa); //constraint isn't useful here
+  sum(ste_gwwa_raw) ~ normal(0,0.001*nsites_gwwa); //constraint 
   STE_gwwa ~ normal(0,1);// prior on fixed effect mean intercept
 
 
