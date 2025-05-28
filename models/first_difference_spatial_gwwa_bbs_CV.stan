@@ -20,47 +20,47 @@
 data {
   
   ///BBS only data
-  int<lower=1> nsites;
-  int<lower=1> nstrata;
-  int<lower=1> ncounts;
-  int<lower=1> nyears;
-  int<lower=1> fixedyear; //middle year of the time-series scaled to ~(nyears/2)
+  int<lower=1> n_sites;
+  int<lower=1> n_strata;
+  int<lower=1> n_counts;
+  int<lower=1> n_years;
+  int<lower=1> fixed_year; //middle year of the time-series scaled to ~(n_years/2)
   
   
-  array[ncounts] int<lower=0> count;              // count observations
-  array[ncounts] int<lower=1> strat;               // strata indicators
-  array[ncounts] int<lower=1> year; // year index
-  array[ncounts] int<lower=1> site; // site index
-  array[ncounts] int<lower=0> firstyr; // first year index
-  array[ncounts] int<lower=1> observer;              // observer indicators
+  array[n_counts] int<lower=0> count;              // count observations
+  array[n_counts] int<lower=1> strat;               // strata indicators
+  array[n_counts] int<lower=1> year; // year index
+  array[n_counts] int<lower=1> site; // site index
+  array[n_counts] int<lower=0> first_year; // first year index
+  array[n_counts] int<lower=1> observer;              // observer indicators
   
-  int<lower=1> nobservers;// number of observers
+  int<lower=1> n_observers;// number of observers
 
 
   // extra data to support the first-difference time-series implementation, which is centered at the mid-year of the available time
   // data to center the abundance estimate
-  int nIy1; //indexing vector dimension - number of years before fixedyear
-  int nIy2; //indexing vector dimension - number of years after fixedyear
-  array[nIy1] int Iy1;//indexing vector - indices of years before fixedyear
-  array[nIy2] int Iy2;//indexing vector - indices of years after fixedyear
-  // a vector of zeros to fill fixed beta values for fixedyear
-  vector[nstrata] zero_betas;
+  int n_Iy1; //indexing vector dimension - number of years before fixed_year
+  int n_Iy2; //indexing vector dimension - number of years after fixed_year
+  array[n_Iy1] int Iy1;//indexing vector - indices of years before fixed_year
+  array[n_Iy2] int Iy2;//indexing vector - indices of years after fixed_year
+  // a vector of zeros to fill fixed beta values for fixed_year
+  vector[n_strata] zero_betas;
   
   
   // array data to estimate annual indices using only observer-site combinations that are in each stratum
-  array[nstrata] int<lower=0> nobs_sites_strata; // number of observer-site combinations in each stratum
-  int<lower=0> maxnobs_sites_strata; //largest value of nobs_sites_strata 
-  array[nstrata,maxnobs_sites_strata] int ste_mat; //matrix identifying which sites are in each stratum
-  array[nstrata,maxnobs_sites_strata] int obs_mat; //matrix identifying which sites are in each stratum
+  array[n_strata] int<lower=0> n_obs_sites_strata; // number of observer-site combinations in each stratum
+  int<lower=0> max_n_obs_sites_strata; //largest value of n_obs_sites_strata 
+  array[n_strata,max_n_obs_sites_strata] int ste_mat; //matrix identifying which sites are in each stratum
+  array[n_strata,max_n_obs_sites_strata] int obs_mat; //matrix identifying which sites are in each stratum
   // above are effectively ragged arrays, but filled with 0 values so that Stan will accept it as data
   // but throws an error if an incorrect strata-site combination is called
 
-  array[nstrata] real nonzeroweight; //proportion of the sites included - scaling factor
+  array[n_strata] real non_zero_weight; //proportion of the sites included - scaling factor
 
   //data for spatial iCAR among strata
-  int<lower=1> N_edges;
-  array [N_edges] int<lower=1, upper=nstrata> node1;  // node1[i] adjacent to node2[i]
-  array [N_edges] int<lower=1, upper=nstrata> node2;  // and node1[i] < node2[i]
+  int<lower=1> n_edges;
+  array [n_edges] int<lower=1, upper=n_strata> node1;  // node1[i] adjacent to node2[i]
+  array [n_edges] int<lower=1, upper=n_strata> node2;  // and node1[i] < node2[i]
 
   // Extra Poisson variance options
   int<lower=0,upper=1> heavy_tailed; //indicator if extra poisson variance should be t-distributed or normal (yes = 1, no = 0 and therefore normal)
@@ -69,30 +69,30 @@ data {
   
   // loo or CV calculations
   int<lower=0,upper=1> calc_log_lik; //indicator if log_lik should be calculated (log_lik for all obs to support loo = 1, no log-lik = 0)
-  int<lower=0,upper=1> calc_CV; //indicator if CV should be calculated (CrossValidation = 1, no CV = 0)
-  // CV folds - if calc_CV == 1 then the following values define the training and test sets
-  int<lower=1, upper=ncounts> ntrain; //
-  int<lower=1, upper=ncounts> ntest; //
-  array[ntrain] int<lower=1, upper=ncounts> train; // indices of counts to include in train data
-  array[ntest] int<lower=1, upper=ncounts> test; // indices of counts to include in test data
+  int<lower=0,upper=1> calc_cv; //indicator if CV should be calculated (CrossValidation = 1, no CV = 0)
+  // CV folds - if calc_cv == 1 then the following values define the training and test sets
+  int<lower=1, upper=n_counts> n_train; //
+  int<lower=1, upper=n_counts> n_test; //
+  array[n_train] int<lower=1, upper=n_counts> train; // indices of counts to include in train data
+  array[n_test] int<lower=1, upper=n_counts> test; // indices of counts to include in test data
   
   // This approach to CV only works if all observers and routes are included in each training-fold
   // So, CV folds must be nested within observers and routes
   // Could implement leave future observation style CV within observers and routes if indexing was done carefully
 
 // GWWA only data
-  int<lower=1> nsites_gwwa;
-  int<lower=1> ncounts_gwwa;
-  int<lower=1> nobservers_gwwa;// number of observers
-  int<lower=1> nyears_gwwa;// number of years
+  int<lower=1> n_sites_gwwa;
+  int<lower=1> n_counts_gwwa;
+  int<lower=1> n_observers_gwwa;// number of observers
+  int<lower=1> n_years_gwwa;// number of years
   int<lower=1> base_year_gwwa;// year index just before gwwa data start
 
-  array[ncounts_gwwa] int<lower=0> count_gwwa;              // count observations
-  array[ncounts_gwwa] int<lower=1> strat_gwwa;               // strata indicators
-  array[ncounts_gwwa] int<lower=1> year_gwwa; // year index
-  array[ncounts_gwwa] int<lower=1> site_gwwa; // site index
-  array[ncounts_gwwa] int<lower=1> observer_gwwa;              // observer indicators
-  array[ncounts_gwwa] real off_set; // log(ncounts) - only applies to gwwa survey, off_set[i] == 0 if survey[i] == 1
+  array[n_counts_gwwa] int<lower=0> count_gwwa;              // count observations
+  array[n_counts_gwwa] int<lower=1> strat_gwwa;               // strata indicators
+  array[n_counts_gwwa] int<lower=1> year_gwwa; // year index
+  array[n_counts_gwwa] int<lower=1> site_gwwa; // site index
+  array[n_counts_gwwa] int<lower=1> observer_gwwa;              // observer indicators
+  array[n_counts_gwwa] real off_set; // log(n_counts) - only applies to gwwa survey, off_set[i] == 0 if survey[i] == 1
 
 
 
@@ -100,23 +100,23 @@ data {
 
 transformed data {
    //These statements split the data into training and testing sets for cross-validation
-   // if calc_CV == 0 (and so no CV is required), then ntrain = ncount and all data are included in the training set
-   // in that case, ntest = 1, but all values of xxx_te are ignored for the remainder of the model
-     array[ntrain] int count_tr = count[train];
-     array[ntrain] int strat_tr = strat[train];
-     array[ntrain] int year_tr = year[train];
-     array[ntrain] int site_tr = site[train];
-     array[ntrain] int firstyr_tr = firstyr[train];
-     array[ntrain] int observer_tr = observer[train];
+   // if calc_cv == 0 (and so no CV is required), then n_train = ncount and all data are included in the training set
+   // in that case, n_test = 1, but all values of xxx_te are ignored for the remainder of the model
+     array[n_train] int count_tr = count[train];
+     array[n_train] int strat_tr = strat[train];
+     array[n_train] int year_tr = year[train];
+     array[n_train] int site_tr = site[train];
+     array[n_train] int first_year_tr = first_year[train];
+     array[n_train] int observer_tr = observer[train];
      
-     array[ntest] int count_te = count[test];
-     array[ntest] int strat_te = strat[test];
-     array[ntest] int year_te = year[test];
-     array[ntest] int site_te = site[test];
-     array[ntest] int firstyr_te = firstyr[test];
-     array[ntest] int observer_te = observer[test];
+     array[n_test] int count_te = count[test];
+     array[n_test] int strat_te = strat[test];
+     array[n_test] int year_te = year[test];
+     array[n_test] int site_te = site[test];
+     array[n_test] int first_year_te = first_year[test];
+     array[n_test] int observer_te = observer[test];
      
-     int<lower=1> nyears_m1 = nyears-1;
+     int<lower=1> n_years_m1 = n_years-1;
   
   
   
@@ -124,15 +124,15 @@ transformed data {
 
 
 parameters {
-  vector[ntrain*use_pois] noise_raw;             // over-dispersion if use_pois == 1
+  vector[n_train*use_pois] noise_raw;             // over-dispersion if use_pois == 1
  
- vector[nstrata] strata_raw; // strata intercepts
+ vector[n_strata] strata_raw; // strata intercepts
    real STRATA; // hyperparameter intercepts
 
   real eta; //first-year effect
   
-  vector[nobservers] obs_raw;    // observer effects
-  vector[nsites] ste_raw;   // site (route) effects
+  vector[n_observers] obs_raw;    // observer effects
+  vector[n_sites] ste_raw;   // site (route) effects
   real<lower=0> sdnoise;    // sd of over-dispersion, if use_pois == 1
   real<lower=0> sdobs;    // sd of observer effects
   real<lower=0> sdste;    // sd of site (route) effects
@@ -142,35 +142,35 @@ parameters {
   real<lower=0> sdbeta;    // sd of annual changes among strata 
   real<lower=0> sdBETA;    // sd of overall annual changes
 
-  vector[nyears_m1] BETA_raw;//_hyperparameter of overall annual change values - "differences" between years 
-  matrix[nstrata,nyears_m1] beta_raw;         // strata level parameters
+  vector[n_years_m1] BETA_raw;//_hyperparameter of overall annual change values - "differences" between years 
+  matrix[n_strata,n_years_m1] beta_raw;         // strata level parameters
   
 //GWWA parameters
   real STE_gwwa; 
-  vector[ncounts_gwwa*use_pois] noise_gwwa_raw;             // over-dispersion if use_pois == 1
+  vector[n_counts_gwwa*use_pois] noise_gwwa_raw;             // over-dispersion if use_pois == 1
   real<lower=3> nu_gwwa; // df of t-distribution > 3 so that it has a finite mean, variance, kurtosis
-  vector[nobservers_gwwa] obs_gwwa_raw;    // observer effects for gwwa survey
+  vector[n_observers_gwwa] obs_gwwa_raw;    // observer effects for gwwa survey
   real<lower=0> sdnoise_gwwa;    // sd of over-dispersion
   real<lower=0> sdobs_gwwa;    // sd of observer effects
   real<lower=0> sdste_gwwa;    // sd of site effects
-  vector[nsites_gwwa] ste_gwwa_raw;   // 
+  vector[n_sites_gwwa] ste_gwwa_raw;   // 
 
    
 
 }
 
 transformed parameters { 
-  vector[ntrain] E;           // log_scale additive likelihood
-  matrix[nstrata,nyears] beta;         // strata-level mean differences (0-centered deviation from continental mean BETA)
-  matrix[nstrata,nyears] yeareffect;  // matrix of estimated annual values of trajectory
-  vector[nyears_m1] BETA; // annual estimates of continental mean differences (nyears - 1, because middle year is fixed at 0)
-  vector[nyears] YearEffect;
-  vector[nstrata] strata;
+  vector[n_train] E;           // log_scale additive likelihood
+  matrix[n_strata,n_years] beta;         // strata-level mean differences (0-centered deviation from continental mean BETA)
+  matrix[n_strata,n_years] yeareffect;  // matrix of estimated annual values of trajectory
+  vector[n_years_m1] BETA; // annual estimates of continental mean differences (n_years - 1, because middle year is fixed at 0)
+  vector[n_years] YearEffect;
+  vector[n_strata] strata;
   real<lower=0> phi; //transformed sdnoise if use_pois == 0 (and therefore Negative Binomial)
   
-  vector[ncounts_gwwa] E_gwwa;           // log_scale additive likelihood
+  vector[n_counts_gwwa] E_gwwa;           // log_scale additive likelihood
   real<lower=0> phi_gwwa; //transformed sdnoise
-  matrix[nstrata,nyears_gwwa] yeareffect_gwwa; //year-effect component for gwwa surveys and years
+  matrix[n_strata,n_years_gwwa] yeareffect_gwwa; //year-effect component for gwwa surveys and years
   
   if(use_pois){
     phi = 0;
@@ -183,17 +183,17 @@ transformed parameters {
   
   BETA = sdBETA * BETA_raw;
 
-  beta[,fixedyear] = zero_betas; //fixed at zero
-  yeareffect[,fixedyear] = zero_betas; //fixed at zero
-  YearEffect[fixedyear] = 0; //fixed at zero
+  beta[,fixed_year] = zero_betas; //fixed at zero
+  yeareffect[,fixed_year] = zero_betas; //fixed at zero
+  YearEffect[fixed_year] = 0; //fixed at zero
 
-// first half of time-series - runs backwards from fixedyear
+// first half of time-series - runs backwards from fixed_year
   for(t in Iy1){ 
     beta[,t] = (sdbeta * beta_raw[,t]) + BETA[t];
     yeareffect[,t] = yeareffect[,t+1] - beta[,t];
     YearEffect[t] = YearEffect[t+1] - BETA[t]; // hyperparameter trajectory interesting to monitor but no direct inference
   }
-// second half of time-series - runs forwards from fixedyear
+// second half of time-series - runs forwards from fixed_year
    for(t in Iy2){
     beta[,t] = (sdbeta * beta_raw[,t-1]) + BETA[t-1];//t-1 indicators to match dimensionality
     yeareffect[,t] = yeareffect[,t-1] + beta[,t];
@@ -203,7 +203,7 @@ transformed parameters {
    strata = (sdstrata*strata_raw) + STRATA; //strata-level terms are centered on teh BBS intercept (STRATA = mu_m)
 
 
-  for(i in 1:ntrain){
+  for(i in 1:n_train){
     real noise;
     real obs = sdobs*obs_raw[observer_tr[i]];
     real ste = sdste*ste_raw[site_tr[i]]; // site intercepts are zero-centered for BBS
@@ -213,26 +213,26 @@ transformed parameters {
     noise = 0;
     }
     
-    E[i] =  strata[strat_tr[i]] + yeareffect[strat_tr[i],year_tr[i]] + eta*firstyr_tr[i] + ste + obs + noise;
+    E[i] =  strata[strat_tr[i]] + yeareffect[strat_tr[i],year_tr[i]] + eta*first_year_tr[i] + ste + obs + noise;
   }
   
   
   
   
   //gwwa component of the time-series
-for(s in 1:nstrata){
+for(s in 1:n_strata){
     yeareffect_gwwa[s,1] = 0;
-   for(t in 2:nyears_gwwa){
-    yeareffect_gwwa[s,t] = yeareffect_gwwa[s,t-1] + beta[s,(t+base_year_gwwa)]; // running forward always 
+   for(t in 2:n_years_gwwa){
+    yeareffect_gwwa[s,t] = yeareffect_gwwa[s,t-1] + beta[s,(t+base_year_gwwa)]; // running forward only 
   }
 }
 
    
 
-  for(i in 1:ncounts_gwwa){
+  for(i in 1:n_counts_gwwa){
     real noise;
     real obs = sdobs_gwwa*obs_gwwa_raw[observer_gwwa[i]];
-    real ste = (sdste_gwwa*ste_gwwa_raw[site_gwwa[i]] + STE_gwwa); // gwwa survey intercepts are centered on the species-specific survey intercept (STE_gwwa = mu_m)
+    real ste = (sdste_gwwa*ste_gwwa_raw[site_gwwa[i]] + STE_gwwa); // gwwa site intercepts are centered on the species-specific survey intercept (STE_gwwa = mu_m)
     if(use_pois){
     noise = sdnoise_gwwa*noise_gwwa_raw[i];
     }else{
@@ -280,10 +280,10 @@ model {
 
  
   obs_raw ~ std_normal();//observer effects
-  //sum(obs_raw) ~ normal(0,0.001*nobservers); // constraint isn't useful here
+  //sum(obs_raw) ~ normal(0,0.001*n_observers); // constraint isn't useful here
 
   ste_raw ~ std_normal();//site effects
-  //sum(ste_raw) ~ normal(0,0.001*nsites); //constraint isn't useful here
+  //sum(ste_raw) ~ normal(0,0.001*n_sites); //constraint isn't useful here
  
  
  //GWWA 
@@ -291,7 +291,7 @@ model {
   sdste_gwwa ~ student_t(3,0,1); //prior on sd of site effects
   obs_gwwa_raw ~ std_normal(); // ~ student_t(3,0,1);//observer effects
   ste_gwwa_raw ~ std_normal();//site effects
-  sum(ste_gwwa_raw) ~ normal(0,0.001*nsites_gwwa); //constraint 
+  sum(ste_gwwa_raw) ~ normal(0,0.001*n_sites_gwwa); //constraint 
   STE_gwwa ~ normal(0,1);// prior on fixed effect mean intercept
 
 
@@ -306,11 +306,11 @@ model {
   sdstrata ~ student_t(3,0,1); //prior on sd of intercept variation
   
 
-for(t in 1:(nyears_m1)){
-    beta_raw[,t] ~ icar_normal(nstrata, node1, node2);
+for(t in 1:(n_years_m1)){
+    beta_raw[,t] ~ icar_normal(n_strata, node1, node2);
 }
 
-   strata_raw ~ icar_normal(nstrata, node1, node2);
+   strata_raw ~ icar_normal(n_strata, node1, node2);
 
   
 if(use_pois){
@@ -327,32 +327,32 @@ if(use_pois){
  generated quantities {
 // only apply to BBS
 
-   array[nstrata,nyears] real<lower=0> n; //full annual indices
-//   array[nstrata*calc_n2,nyears*calc_n2] real<lower=0> n2; //full annual indices calculated assuming site-effects are log-normal and the same among strata
-//   array[nstrata*calc_n2,nyears*calc_n2] real<lower=0> nslope2; //smooth component of annual indices calculated assuming site-effects are log-normal and the same among strata
+   array[n_strata,n_years] real<lower=0> n; //full annual indices
+//   array[n_strata*calc_n2,n_years*calc_n2] real<lower=0> n2; //full annual indices calculated assuming site-effects are log-normal and the same among strata
+//   array[n_strata*calc_n2,n_years*calc_n2] real<lower=0> nslope2; //smooth component of annual indices calculated assuming site-effects are log-normal and the same among strata
    real<lower=0> retrans_noise;
    real<lower=0> retrans_obs;
    real<lower=0> retrans_ste;
-   vector<lower=0>[nyears] Hyper_N; // hyperparameter mean survey-wide population trajectory - only for the first difference model
-   vector[ncounts*calc_log_lik] log_lik; // alternative value to track the observervation level log-likelihood
-   vector[ntest*calc_CV] log_lik_cv; // alternative value to track the log-likelihood of the coutns in the test dataset
+   vector<lower=0>[n_years] Hyper_N; // hyperparameter mean survey-wide population trajectory - only for the first difference model
+   vector[n_counts*calc_log_lik] log_lik; // alternative value to track the observervation level log-likelihood
+   vector[n_test*calc_cv] log_lik_cv; // alternative value to track the log-likelihood of the coutns in the test dataset
    real adj;
  
   if(calc_log_lik){
   // potentially useful for estimating loo-diagnostics, such as looic
   if(use_pois){
-  for(i in 1:ncounts){
+  for(i in 1:n_counts){
    log_lik[i] = poisson_log_lpmf(count_tr[i] | E[i]);
    }
   }else{
-   for(i in 1:ncounts){
+   for(i in 1:n_counts){
    log_lik[i] = neg_binomial_2_log_lpmf(count_tr[i] | E[i] , phi);
    } 
   }
   }
   
-  if(calc_CV){
-    for(i in 1:ntest){
+  if(calc_cv){
+    for(i in 1:n_test){
       
     real noise;
     real obs = sdobs*obs_raw[observer_te[i]];
@@ -370,11 +370,11 @@ if(use_pois){
       }
    
       
-   log_lik_cv[i] = poisson_log_lpmf(count_te[i] | strata[strat_te[i]] + yeareffect[strat_te[i],year_te[i]] + eta*firstyr_te[i] + ste + obs + noise);
+   log_lik_cv[i] = poisson_log_lpmf(count_te[i] | strata[strat_te[i]] + yeareffect[strat_te[i],year_te[i]] + eta*first_year_te[i] + ste + obs + noise);
   
    }else{
      noise = 0;
-  log_lik_cv[i] = neg_binomial_2_log_lpmf(count_te[i] | strata + yeareffect[strat_te[i],year_te[i]] + eta*firstyr_te[i] + ste + obs + noise, phi);
+  log_lik_cv[i] = neg_binomial_2_log_lpmf(count_te[i] | strata + yeareffect[strat_te[i],year_te[i]] + eta*first_year_te[i] + ste + obs + noise, phi);
   
    }
   
@@ -404,13 +404,13 @@ retrans_ste = 0.5*(sdste^2);
 // Annual indices of abundance - strata-level annual predicted counts
 
 
-for(y in 1:nyears){
+for(y in 1:n_years){
 
-      for(s in 1:nstrata){
+      for(s in 1:n_strata){
 
-  array[nobs_sites_strata[s]] real n_t;
+  array[n_obs_sites_strata[s]] real n_t;
 
-        for(t in 1:nobs_sites_strata[s]){
+        for(t in 1:n_obs_sites_strata[s]){
 
   real ste = sdste*ste_raw[ste_mat[s,t]]; // site intercepts
   real obs = sdobs*obs_raw[obs_mat[s,t]]; // observer intercepts
@@ -419,14 +419,14 @@ for(y in 1:nyears){
 
       n_t[t] = exp(strata[s] + yeareffect[s,y] + retrans_noise + ste + obs);
         }
-        n[s,y] = nonzeroweight[s] * mean(n_t);//mean of exponentiated predictions across sites in a stratum
+        n[s,y] = non_zero_weight[s] * mean(n_t);//mean of exponentiated predictions across sites in a stratum
         //using the mean of hte exponentiated values, instead of including the log-normal
         // retransformation factor (0.5*sdste^2), because this retransformation makes 2 questionable assumptions:
           // 1 - assumes that sdste is equal among all strata
           // 2 - assumes that the distribution of site-effects is normal
         // As a result, these annual indices reflect predictions of mean annual abundance within strata of the routes that are included in the stratum
         // if(calc_n2){
-        // n2[s,y] = nonzeroweight[s] * exp(strata + beta[s]*(y-fixedyear) + retrans_ste + yeareffect[s,y] + retrans_noise + retrans_obs);//mean of exponentiated predictions across sites in a stratum
+        // n2[s,y] = non_zero_weight[s] * exp(strata + beta[s]*(y-fixed_year) + retrans_ste + yeareffect[s,y] + retrans_noise + retrans_obs);//mean of exponentiated predictions across sites in a stratum
         // }
       Hyper_N[y] = exp(STRATA + YearEffect[y] + retrans_noise + 0.5*sdobs^2 + 0.5*sdste^2);
 
