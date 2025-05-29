@@ -393,6 +393,24 @@ print(map_gwwa_data)
 dev.off()
 
 
+map_gwwa_data <- ggplot()+
+  geom_sf(data = base_state_map,
+          fill = NA,
+          colour = grey(0.5))+
+  geom_sf(data = map_summary,
+          aes(fill = mean_count))+
+  coord_sf(xlim = data_bounding_box[c("xmin","xmax")],
+           ylim = data_bounding_box[c("ymin","ymax")])+
+  facet_grid(cols = vars(time_period),rows = vars(survey))+
+  theme_bw() +
+  scale_fill_viridis_c(na.value = "grey70",
+                       transform = "log10",
+                       name = "Observed\nmean count\n")
+png(filename = paste0("Mean_counts_by_survey_and_period.png"),
+    res = 300,
+    width = 8, height = 7, units = "in")
+print(map_gwwa_data)
+dev.off()
 
 # Compile stan data for gwwa model ----------------------------------------
 
@@ -629,6 +647,14 @@ png(filename = paste0("figures/images/trajectory_comparison.png"),
 print(trajs)
 dev.off()
 
+trajs <- trajs_l + trajs_s + plot_layout(guides = "collect")
+
+
+png(filename = paste0("trajectory_comparison.png"),
+    res = 300,
+    width = 8, height = 4.9, units = "in")
+print(trajs)
+dev.off()
 
 
 
@@ -737,6 +763,19 @@ print(trend_comp_map)
 dev.off()
 
 
+trend_comp_map <- trend_comp_map_l + trend_comp_map_s 
+
+
+
+
+
+png(filename = paste0("trend_comparison.png"),
+    res = 300,
+    width = 8, height = 4.9, units = "in")
+print(trend_comp_map)
+dev.off()
+
+
 
 
 trend_comp_map_uci <- ggplot()+
@@ -835,6 +874,17 @@ trend_ci_width_comp_map <- trend_ci_width_comp_map_l + trend_ci_width_comp_map_s
 
 
 png(filename = paste0("figures/images/CI_halfwidth.png"),
+    res = 300,
+    width = 8, height = 4.5, units = "in")
+print(trend_ci_width_comp_map)
+dev.off()
+
+
+trend_ci_width_comp_map <- trend_ci_width_comp_map_l + trend_ci_width_comp_map_s 
+
+
+
+png(filename = paste0("CI_halfwidth.png"),
     res = 300,
     width = 8, height = 4.5, units = "in")
 print(trend_ci_width_comp_map)
