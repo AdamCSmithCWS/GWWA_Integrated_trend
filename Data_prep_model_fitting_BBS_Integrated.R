@@ -42,7 +42,8 @@ bbs_strata_map <- strata_map %>%
 bbs_summary_pre_1990 <- pm$raw_data  %>% 
   filter(year < 1991) %>% 
   group_by(strata_name) %>% 
-  summarise(log_mean_count = log(mean(count)),
+  summarise(log_mean_count = log(mean(count,na.rm = TRUE)),
+            mean_count = mean(count,na.rm = TRUE),
             .groups = "keep") %>% 
   mutate(time_period = "Pre-1990")
 
@@ -50,7 +51,8 @@ bbs_summary_pre_1990 <- pm$raw_data  %>%
 bbs_summary_post_2000 <- pm$raw_data  %>% 
   filter(year > 2000) %>% 
   group_by(strata_name) %>% 
-  summarise(log_mean_count = log(mean(count)),
+  summarise(log_mean_count = log(mean(count,na.rm = TRUE)),
+            mean_count = mean(count,na.rm = TRUE),
             .groups = "keep") %>% 
   mutate(time_period = "Post-2000")
 
@@ -59,7 +61,8 @@ bbs_summary <- bind_rows(bbs_summary_pre_1990,
                          bbs_summary_post_2000) %>% 
   mutate(survey = "BBS")
 
-
+re_fit_bbs <- FALSE
+if(re_fit_bbs){
 fit_bbs <- run_model(pm,
                      refresh = 500,
                      iter_warmup = 2000,
@@ -67,23 +70,27 @@ fit_bbs <- run_model(pm,
                      max_treedepth = 11,
                      output_basename = "bbs_only",
                      output_dir = "output")
-
+}else{
 fit_bbs <- readRDS("output/bbs_only.rds")
+}
 
 
 
+inds <- bbsBayes2::generate_indices(fit_bbs,
+                                    hpdi = TRUE)
 
-inds <- bbsBayes2::generate_indices(fit_bbs)
-
-trends <- bbsBayes2::generate_trends(inds)
-trends_09 <- bbsBayes2::generate_trends(inds,min_year = 2009)
-trends_11 <- bbsBayes2::generate_trends(inds,min_year = 2011)
+trends <- bbsBayes2::generate_trends(inds,
+                                     quantiles = c(0.025,0.1,0.9,0.975))
+trends_09 <- bbsBayes2::generate_trends(inds,min_year = 2009,
+                                        quantiles = c(0.025,0.1,0.9,0.975))
+trends_11 <- bbsBayes2::generate_trends(inds,min_year = 2011,
+                                        quantiles = c(0.025,0.1,0.9,0.975))
 
 map_t <- bbsBayes2::plot_map(trends)
 map_t_11 <- bbsBayes2::plot_map(trends_11)
 map_t_09 <- bbsBayes2::plot_map(trends_09)
 
-maps <- map_t / map_t_05 
+maps <- map_t / map_t_09 
 
 pdf(paste0("figures/bbs_long_term_trends.pdf"))
 print(map_t)
@@ -107,13 +114,17 @@ bcr_latlong <- sf::st_join(x = strata_map,
 
 inds_bcr <- bbsBayes2::generate_indices(fit_bbs,
                              regions_index = bcr_latlong,
-                             regions = "bcr")
+                             regions = "bcr",
+                             hpdi = TRUE)
 
-trends_bcr <- bbsBayes2::generate_trends(inds_bcr)
+trends_bcr <- bbsBayes2::generate_trends(inds_bcr,
+                                         quantiles = c(0.025,0.1,0.9,0.975))
 trends_bcr_2011 <- bbsBayes2::generate_trends(inds_bcr,
-                                   min_year = 2011)
+                                   min_year = 2011,
+                                   quantiles = c(0.025,0.1,0.9,0.975))
 trends_bcr_2009 <- bbsBayes2::generate_trends(inds_bcr,
-                              min_year = 2009)
+                              min_year = 2009,
+                              quantiles = c(0.025,0.1,0.9,0.975))
 
 trajs_bcr <- bbsBayes2::plot_indices(inds_bcr,
                           min_year = 2005)
@@ -290,7 +301,8 @@ gwwa_data <- site_centres_gwwa %>%
 
 gwwa_summary <- gwwa_data  %>% 
   group_by(strata_name) %>% 
-  summarise(log_mean_count = log(mean(count)),
+  summarise(log_mean_count = log(mean(count,na.rm = TRUE)),
+            mean_count = mean(count,na.rm = TRUE),
             .groups = "keep") %>% 
   mutate(time_period = "Post-2000",
          survey = "GWWA")
@@ -316,12 +328,29 @@ map_gwwa_data <- ggplot()+
           fill = NA,
           colour = grey(0.8))+
   geom_sf(data = map_summary,
-          aes(fill = log_mean_count))+
+          aes(fill = mean_count))+
   coord_sf(xlim = data_bounding_box[c("xmin","xmax")],
            ylim = data_bounding_box[c("ymin","ymax")])+
   facet_grid(cols = vars(time_period),rows = vars(survey))+
   theme_bw() +
-  scale_fill_viridis_c(na.value = "grey70")
+  scale_fill_viridis_c(na.value = "grey70",
+                       transform = "log10",
+                       name = "Observed\nmean count\n")+
+  labs(caption = "Observed mean counts during BBS (top row) and species specific 
+       surveys for Golden-winged Warblers (GWWA, bottom row). During the 
+       first few decades of the BBS (pre-1990), the species was regularly 
+       observed in most of its range. Since 2000, the species is very 
+       rarely observed during BBS and completely absent from all surveys 
+       in the grey grid-cells. By contrast, the species is observed in 
+       much higher numbers during the species-specific surveys",
+       alt = "Observed mean counts during BBS (top row) and species specific 
+       surveys for Golden-winged Warblers (GWWA, bottom row).During the 
+       first few decades of the BBS (pre-1990), the species was regularly 
+       observed in most of its range. Since 2000, the species is very 
+       rarely observed during BBS and completely absent from all surveys 
+       in the grey grid-cells. By contrast, the species is observed in 
+       much higher numbers during the species-specific surveys")+
+  theme(plot.caption = element_text(hjust = 0))
 
 print(map_gwwa_data)
 
@@ -335,14 +364,29 @@ map_gwwa_data <- ggplot()+
           fill = NA,
           colour = grey(0.5))+
   geom_sf(data = map_summary,
-          aes(fill = log_mean_count))+
+          aes(fill = mean_count))+
   coord_sf(xlim = data_bounding_box[c("xmin","xmax")],
            ylim = data_bounding_box[c("ymin","ymax")])+
   facet_grid(cols = vars(time_period),rows = vars(survey))+
   theme_bw() +
-  scale_fill_viridis_c(na.value = "grey70")
+  scale_fill_viridis_c(na.value = "grey70",
+                       transform = "log10",
+                       name = "Observed\nmean count\n")+
+  labs(caption = "Observed mean counts during BBS (top row) and species specific surveys for Golden-winged
+  Warblers (GWWA, bottom row). During the first few decades of the BBS (pre-1990), the species was regularly
+  observed in most of its range. Since 2000, the species is very rarely observed during BBS and
+  completely absent from all surveys in the grey grid-cells. By contrast, the species is observed in
+  much higher numbers during the species-specific surveys",
+       alt = "Observed mean counts during BBS (top row) and species specific 
+       surveys for Golden-winged Warblers (GWWA, bottom row).During the 
+       first few decades of the BBS (pre-1990), the species was regularly 
+       observed in most of its range. Since 2000, the species is very 
+       rarely observed during BBS and completely absent from all surveys 
+       in the grey grid-cells. By contrast, the species is observed in 
+       much higher numbers during the species-specific surveys")+
+  theme(plot.caption = element_text(hjust = 0))
 
-png(filename = "Mean_counts_by_survey_and_period.png",
+png(filename = paste0("figures/images/Mean_counts_by_survey_and_period.png"),
     res = 300,
     width = 8, height = 7, units = "in")
 print(map_gwwa_data)
@@ -391,6 +435,9 @@ output_dir <- "output/" # Stan writes output to files as it samples. This is gre
 
 # Fit integrated model ----------------------------------------------------
 
+re_fit_integrated <- FALSE
+
+if(re_fit_integrated){
 
 stanfit <- model$sample(
   data=stan_data,
@@ -431,37 +478,33 @@ save(list = c("stanfit","stan_data",
               "fit_summary"),
      file = paste0(output_dir,"/",out_base,"_Stan_fit.RData"))
 
+}else{
+  load(paste0(output_dir,"/",out_base,"_Stan_fit.RData"))
+  fit_integrated <- readRDS(paste0(output_dir,"/integrated.rds"))
+}
 
 
 
+# Integrated indices and trends -------------------------------------------
 
 
-inds <- bbsBayes2::generate_indices(fit_integrated)
 
-trends <- bbsBayes2::generate_trends(inds)
-trends_09 <- bbsBayes2::generate_trends(inds,min_year = 2009)
-trends_11 <- bbsBayes2::generate_trends(inds,min_year = 2011)
+inds_int <- bbsBayes2::generate_indices(fit_integrated,
+                                        hpdi = TRUE)
 
-map_t <- bbsBayes2::plot_map(trends)
-map_t_05 <- bbsBayes2::plot_map(trends_05)
-map_t_11 <- bbsBayes2::plot_map(trends_11)
-map_t_09 <- bbsBayes2::plot_map(trends_09)
+trends_int <- bbsBayes2::generate_trends(inds_int,
+                                         quantiles = c(0.025,0.1,0.9,0.975))
+trends_int_09 <- bbsBayes2::generate_trends(inds_int,min_year = 2009,
+                                            quantiles = c(0.025,0.1,0.9,0.975))
+trends_int_11 <- bbsBayes2::generate_trends(inds_int,min_year = 2011,
+                                            quantiles = c(0.025,0.1,0.9,0.975))
 
-maps <- map_t / map_t_05 
-
-pdf(paste0("figures/bbs_long_term_trends.pdf"))
-print(map_t)
-dev.off()
-pdf(paste0("figures/bbs_2005_term_trends.pdf"))
-print(map_t_05)
-dev.off()
-pdf(paste0("figures/bbs_2009_term_trends.pdf"))
-print(map_t_09)
-dev.off()
-
-pdf(paste0("figures/bbs_2011_term_trends.pdf"))
-print(map_t_11)
-dev.off()
+# map_t_int <- bbsBayes2::plot_map(trends_int)
+# map_t_int_11 <- bbsBayes2::plot_map(trends_int_11)
+# map_t_int_09 <- bbsBayes2::plot_map(trends_int_09)
+# 
+# maps <- map_t / map_t_09 
+# 
 
 
 bcrs <- bbsBayes2::load_map("bcr") %>% 
@@ -472,27 +515,329 @@ bcr_latlong <- sf::st_join(x = strata_map,
                            largest = TRUE) %>% 
   sf::st_drop_geometry()
 
-inds_bcr <- bbsBayes2::generate_indices(fit_bbs,
+inds_int_bcr <- bbsBayes2::generate_indices(fit_integrated,
                                         regions_index = bcr_latlong,
-                                        regions = "bcr")
+                                        regions = "bcr",
+                                        hpdi = TRUE)
 
-trends_bcr <- bbsBayes2::generate_trends(inds_bcr)
-trends_bcr_2005 <- bbsBayes2::generate_trends(inds_bcr,
-                                              min_year = 2005)
-trends_bcr_2009 <- bbsBayes2::generate_trends(inds_bcr,
-                                              min_year = 2009)
+trends_int_bcr <- bbsBayes2::generate_trends(inds_int_bcr,
+                                             quantiles = c(0.025,0.1,0.9,0.975))
+trends_int_bcr_2009 <- bbsBayes2::generate_trends(inds_int_bcr,
+                                              min_year = 2009,
+                                              quantiles = c(0.025,0.1,0.9,0.975))
+
+trajs_bcr_int <- bbsBayes2::plot_indices(inds_int_bcr,
+                                     min_year = 2005)
+trajs_bcr_int[["BCR28"]]
 
 trajs_bcr <- bbsBayes2::plot_indices(inds_bcr,
-                                     min_year = 2005)
+                                         min_year = 2005)
 trajs_bcr[["BCR28"]]
 
+trends_int_bcr_2009$trends[6,c("trend","percent_change")]
 trends_bcr_2009$trends[6,c("trend","percent_change")]
 
 # trend percent_change
 # <dbl>          <dbl>
 #   1 -6.07          -52.8
 
+# Plotting trajectories ---------------------------------------------------
 
 
+inds_int_plot <- inds_int$indices %>% 
+  mutate(survey = "Integrated")
+
+
+inds_int_plot_bcr <- inds_int_bcr$indices %>% 
+  mutate(survey = "Integrated")
+
+inds_plot_bcr <- inds_bcr$indices %>% 
+  mutate(survey = "BBS-only")
+
+inds_plot <- inds$indices %>% 
+  mutate(survey = "BBS-only") %>% 
+  bind_rows(inds_int_plot,
+            inds_int_plot_bcr,
+            inds_plot_bcr) %>% 
+  filter(region %in% c("continent","BCR28")) %>% 
+  mutate(Region = factor(region,
+                         levels = c("continent","BCR28"),
+                         labels = c("Survey-wide","Appalachian Mountains"),
+                         ordered = TRUE))
+
+
+
+trajs_l <- ggplot(data = filter(inds_plot,region %in% c("continent","BCR28")))+
+  geom_ribbon(aes(x = year,
+                  ymin = `index_q_0.05`,
+                  ymax = `index_q_0.95`,
+                  fill = survey),
+              alpha = 0.2)+
+  geom_line(aes(x = year,
+                y = index,
+                colour = survey))+
+  facet_grid(rows = vars(Region),
+             scales = "free")+
+  theme_bw()+
+  labs(title = "1966-2021")+
+  ylab("Expected count on BBS")+
+  xlab("")+
+  scale_colour_viridis_d(begin = 0.1,end = 0.7,
+                         aesthetics = c("fill","colour"))+
+  theme(plot.title = element_text(hjust = 1),
+        axis.text = element_text(size = 8))
+
+trajs_s <- ggplot(data = filter(inds_plot,
+                                #region %in% c("continent","BCR28"),
+                                region %in% c("BCR28"),
+                                year > 2005))+
+  geom_ribbon(aes(x = year,
+                  ymin = `index_q_0.05`,
+                  ymax = `index_q_0.95`,
+                  fill = survey),
+              alpha = 0.2)+
+  geom_line(aes(x = year,
+                y = index,
+                colour = survey))+
+  facet_grid(rows = vars(Region),
+             scales = "free")+
+  theme_bw()+
+  labs(title = "2005-2021")+
+  xlab("")+
+  ylab("Expected count on BBS")+
+  scale_colour_viridis_d(begin = 0.1,end = 0.7,
+                         aesthetics = c("fill","colour"))+  
+  theme(plot.title = element_text(hjust = 1),
+        axis.text = element_text(size = 8))
+
+trajs <- trajs_l + trajs_s + plot_layout(guides = "collect")+
+  labs(caption = "Estimated population trajectories from the BBS-only and integrated models.The long-term traejctories (left column) 
+  both Survey-wide and for the Applachian region only, show relatively little variation between the two models. The more 
+  recent population trajectory for the Appalachian mountains where the species-specifc survey contributes data, 
+  shows more variation through time than the trajectory from only BBS data (right side).",
+       alt = "Estimated population trajectories from the BBS-only and integrated models.
+       The long-term traejctories (left column) both Survey-wide and for the Applachian
+       region only, show relatively little variation between the two models. The more 
+       recent population trajectory for the Appalachian mountains where the species-specifc
+       survey exists, shows more variation through time than the trajectory from only
+       BBS data (right side).")
+
+
+png(filename = paste0("figures/images/trajectory_comparison.png"),
+    res = 300,
+    width = 8, height = 4.9, units = "in")
+print(trajs)
+dev.off()
+
+
+
+
+# Plotting trends ---------------------------------------------------------
+
+breaks <- c(-7, -4, -2, -1, -0.5, 0.5, 1, 2, 4, 7)
+labls = c(paste0("< ",breaks[1]),paste0(breaks[-c(length(breaks))],":", breaks[-c(1)]),paste0("> ",breaks[length(breaks)]))
+labls = paste0(labls, " %")
+col_viridis <- FALSE
+if (col_viridis)
+{
+  map_palette <- c("#fde725", "#dce319", "#b8de29", "#95d840", "#73d055", "#55c667",
+                   "#238a8d", "#2d708e", "#39568c", "#453781", "#481567")
+}else
+{
+  map_palette <- c("#a50026", "#d73027", "#f46d43", "#fdae61", "#fee090", "#ffffbf",
+                   "#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695")
+}
+
+names(map_palette) <- labls
+
+
+trends_int_plot <- trends_int$trends %>% 
+  mutate(survey = "Integrated")
+
+trends_plots_09 <- trends_09$trends %>% 
+  mutate(survey = "BBS-only") 
+
+trends_int_plot_09 <- trends_int_09$trends %>% 
+  mutate(survey = "Integrated")
+
+trends_plot <- trends$trends %>% 
+  mutate(survey = "BBS-only") %>% 
+  bind_rows(trends_int_plot,trends_plots_09,
+            trends_int_plot_09) %>% 
+  filter(region_type == "stratum") %>% 
+  mutate(time_scale = paste(start_year,end_year,sep = "-"),
+         Tplot = cut(trend,breaks = c(-Inf, breaks, Inf),labels = labls),
+         Tplot_uci = cut(trend_q_0.9,breaks = c(-Inf, breaks, Inf),labels = labls),
+         Tplot_lci = cut(trend_q_0.1,breaks = c(-Inf, breaks, Inf),labels = labls),
+         halfwidth_of_80_percent_credible_interval = (trend_q_0.9-trend_q_0.1)/2)
+
+trend_maps <- strata_map %>% 
+  inner_join(trends_plot,
+             by = c("strata_name" = "region"))
+
+
+
+bb <- st_bbox(trend_maps)
+base_state_map <- sf::st_transform(base_state_map,crs = st_crs(trend_maps))
+
+trend_comp_map_l <- ggplot()+
+  geom_sf(data = filter(trend_maps,time_scale == "1966-2021"),
+          aes(fill = Tplot))+
+  geom_sf(data = base_state_map,
+          fill = NA)+
+  coord_sf(xlim = data_bounding_box[c("xmin","xmax")],
+           ylim = data_bounding_box[c("ymin","ymax")])+
+  scale_fill_manual(values = map_palette, aesthetics = c("fill"),
+                    guide = ggplot2::guide_legend(reverse=TRUE),
+                    name = paste0("Trend\n1966-2021"))+
+facet_grid(rows = vars(survey))+
+  labs(title = "1966-2021")+
+  theme_bw()+
+  theme(plot.title = element_text(hjust = 1),
+        axis.text = element_text(size = 8))
+
+
+
+
+trend_comp_map_s <- ggplot()+
+  geom_sf(data = filter(trend_maps,time_scale == "2009-2021"),
+          aes(fill = Tplot))+
+  geom_sf(data = base_state_map,
+          fill = NA)+
+  coord_sf(xlim = data_bounding_box[c("xmin","xmax")],
+           ylim = data_bounding_box[c("ymin","ymax")])+
+  scale_fill_manual(values = map_palette, aesthetics = c("fill"),
+                    guide = ggplot2::guide_legend(reverse=TRUE),
+                    name = paste0("Trend\n2009-2021"))+
+  facet_grid(rows = vars(survey))+
+  labs(title = "2009-2021")+
+  theme_bw()+
+  theme(plot.title = element_text(hjust = 1),
+        axis.text = element_text(size = 8))
+
+
+trend_comp_map <- trend_comp_map_l + trend_comp_map_s +
+  labs(caption = "Spatial pattern in long-term (1966-2021) and more recent (2009-2021) population trends, from the two
+       models. The long-term trends from the BBS-only and the integrated models are essentially the same. The
+       more recent trends show more variation in space with the integration of data from both the BBS and
+       the species-specific survey.",
+       alt = "Spatial pattern in long-term (1966-2021) and more recent (2009-2021) population trends, from the two
+       models. The long-term trends from the BBS-only and the integrated models are essentially the same. The
+       more recent trends show more variation in space with the integration of data from both the BBS and
+       the species-specific survey.")
+
+
+
+  
+
+png(filename = paste0("figures/images/trend_comparison.png"),
+    res = 300,
+    width = 8, height = 4.9, units = "in")
+print(trend_comp_map)
+dev.off()
+
+
+
+
+trend_comp_map_uci <- ggplot()+
+  geom_sf(data = trend_maps,
+          aes(fill = Tplot_uci))+
+  geom_sf(data = base_state_map,
+          fill = NA)+
+  coord_sf(xlim = data_bounding_box[c("xmin","xmax")],
+           ylim = data_bounding_box[c("ymin","ymax")])+
+  scale_fill_manual(values = map_palette, aesthetics = c("fill"),
+                    guide = ggplot2::guide_legend(reverse=TRUE),
+                    name = paste0("Trend"))+
+  facet_grid(cols = vars(time_scale),
+             rows = vars(survey))+
+  theme_bw()
+trend_comp_map_lci <- ggplot()+
+  geom_sf(data = trend_maps,
+          aes(fill = Tplot_lci))+
+  geom_sf(data = base_state_map,
+          fill = NA)+
+  coord_sf(xlim = data_bounding_box[c("xmin","xmax")],
+           ylim = data_bounding_box[c("ymin","ymax")])+
+  scale_fill_manual(values = map_palette, aesthetics = c("fill"),
+                    guide = ggplot2::guide_legend(reverse=TRUE),
+                    name = paste0("Trend"))+
+  facet_grid(cols = vars(time_scale),
+             rows = vars(survey))+
+  theme_bw()
+
+trend_comp_map_uci + trend_comp_map_lci 
+
+
+
+
+mean_abund_comp_map <- ggplot()+
+  geom_sf(data = trend_maps,
+          aes(fill = rel_abundance))+
+  geom_sf(data = base_state_map,
+          fill = NA)+
+  coord_sf(xlim = data_bounding_box[c("xmin","xmax")],
+           ylim = data_bounding_box[c("ymin","ymax")])+
+  scale_fill_viridis_c(aesthetics = c("fill"),
+                    guide = ggplot2::guide_legend(reverse=TRUE),
+                    name = paste0("Relative Abundance"),
+                    transform = "log10")+
+  facet_grid(cols = vars(time_scale),
+             rows = vars(survey))+
+  theme_bw()
+
+mean_abund_comp_map  
+
+
+trend_ci_width_comp_map_l <- ggplot()+
+  geom_sf(data = filter(trend_maps,time_scale == "1966-2021"),
+          aes(fill = halfwidth_of_80_percent_credible_interval))+
+  geom_sf(data = base_state_map,
+          fill = NA)+
+  coord_sf(xlim = data_bounding_box[c("xmin","xmax")],
+           ylim = data_bounding_box[c("ymin","ymax")])+
+  scale_fill_viridis_c(aesthetics = c("fill"),
+                       guide = ggplot2::guide_colourbar(reverse=TRUE,
+                                                        nbin = 6),
+                       name = paste0("Half-width of \n80% CI trend\n1966-2021"))+
+  facet_grid(rows = vars(survey))+
+  labs(title = "1966-2021")+
+  theme_bw()+
+  theme(plot.title = element_text(hjust = 1),
+        axis.text = element_text(size = 8))
+trend_ci_width_comp_map_s <- ggplot()+
+  geom_sf(data = filter(trend_maps,time_scale == "2009-2021"),
+          aes(fill = halfwidth_of_80_percent_credible_interval))+
+  geom_sf(data = base_state_map,
+          fill = NA)+
+  coord_sf(xlim = data_bounding_box[c("xmin","xmax")],
+           ylim = data_bounding_box[c("ymin","ymax")])+
+  scale_fill_viridis_c(aesthetics = c("fill"),
+                       guide = ggplot2::guide_colourbar(reverse=TRUE,
+                                                        nbin = 6),
+                       name = paste0("Half-width of \n80% CI trend\n2009-2021"))+
+  facet_grid(rows = vars(survey))+
+  labs(title = "2009-2021")+
+  theme_bw()+
+  theme(plot.title = element_text(hjust = 1),
+        axis.text = element_text(size = 8))
+
+trend_ci_width_comp_map <- trend_ci_width_comp_map_l + trend_ci_width_comp_map_s +
+  labs(caption = "Spatial pattern in the uncertainty of trend estimates for the long-term (1966-2021) and more 
+       recent (2009-2021) population trends, from the two models. The uncertainty long-term trends from the 
+       BBS-only and the integrated models are are very similar. The more recent trends are more
+       precise when information from the two surveys are integrated.",
+       alt = "Spatial pattern in the uncertainty of trend estimates for the long-term (1966-2021) and more 
+       recent (2009-2021) population trends, from the two models. The uncertainty long-term trends from the 
+       BBS-only and the integrated models are are very similar. The more recent trends are more
+       precise when information from the two surveys are integrated.")
+
+
+
+png(filename = paste0("figures/images/CI_halfwidth.png"),
+    res = 300,
+    width = 8, height = 4.5, units = "in")
+print(trend_ci_width_comp_map)
+dev.off()
 
 
