@@ -8,7 +8,7 @@ Golden-winged warblers populations have changed since 1970, when structured moni
 
 We used counts of Golden-winged Warblers in the BBS database from 1970 through 2021 (Ziolkowski et al. 2022). The BBS provides trend information across much of Canada and the United States for up to 500 species of birds (Hudson et al. 2017, Sauer et al. 2017). BBS data are collected annually by expert volunteers conducting 50, 3-minute point-counts along a roughly 40-km long roadside route, and approximately 5000 routes are surveyed each year (Hudson et al. 2017). The field methods are designed to estimate changes in relative abundance through time by controlling for the effects of survey location, weather, time of day, and season, as well as variations among observers (Sauer et al. 2017). In the Appalachian portion of their range, one or more Golden-winged Warblers were observed during an average BBS count prior to the 1990s (top-left facet of Figure 1). Since the 1990s, the species has observed very rarely (one observation in every 10 - 100 surveys) or not-at-all in some regions (grey strata in the top-right facet of Figure 1).
 
-![](Mean_counts_by_survey_and_period.png)
+![](figures/images/Mean_counts_by_survey_and_period.png)
 
 We also used counts of Golden-winged Warblers from another structured, citizen-science monitoring program that was established in 2009 to improve information on the species' population trends (Wood et al. 2017). The species-specific program targets suitable habitat and use field protocols designed to increase the probability of detection when the species is present, leading to much higher mean counts of birds observed at a location in each year, and thereby more information to estimate changes over time. This species-specific monitoring program has a spatially balanced sampling design within the Northern Appalachian Mountains Bird Conservation Region (BCR 28). It combines both off-road and roadside surveys at locations within the species' preferred habitat. The protocol uses a highly-structured field survey method that includes passive point-count surveys and call playback to increase the detection probability of the species (Wood et al. 2017) while strictly controlling effort and detectabilty. The point count locations are stratified into spatial regions defined by one-quarter Delorme Atlas squares (quads), and each quad includes five point count locations. Inferences on trend are based on changes in abundance or occupancy in each of the quads. As such, these replicate point count locations within quads represent a comparable structure to the replicate stops within BBS routes. To match the way replicate stops are handled in the BBS, we have summed the observed counts of birds by a given observer across all count locations in each quad and used an offset term to adjust for any variations in the total number of counts among quads, observers, and years. We also restructured the species-specific program data to match the spatial stratification of the BBS data by joining each quad to the 1-degree grid-cell that contains the centroid of the quad. As a result, information on species trend in a given grid-cell can be informed by changes between subsequent annual surveys on a given route (BBS) or subsequent annual surveys in a given quad (species-specific program).
 
@@ -32,21 +32,29 @@ $$
 \beta_{i,t} = B_t + \beta^{\prime}_{i,t}
 $$
 
-$$B_t \sim N(0,\sigma_B)$$
+$$
+B_t \sim N(0,\sigma_B)
+$$
 
-$$\beta^{\prime}_{i,t}\sim Normal\left(\frac{\sum_{n{\in N}_i}\beta^{\prime}_{n,t}}{N_i},\frac{\sigma_{\beta^{\prime}}}{N_i}\right)$$
+$$
+\beta^{\prime}_{i,t}\sim Normal\left(\frac{\sum_{n{\in N}_i}\beta^{\prime}_{n,t}}{N_i},\frac{\sigma_{\beta^{\prime}}}{N_i}\right)
+$$
 
 We estimated annual relative abundance and trends from the model following standard approaches for the BBS data and Smith et al. (2023), using modified versions of the functions in the R-package bbsBayes (Edwards et al. 2021). We scaled all predictions to represent the expected mean count of Golden-winged Warblers on an average BBS route by an average BBS observer, so that predicted population trajectories are consistently defined across all strata and years. That is, they represent the expected counts on BBS after integrating information on the annual population changes from the species-specific monitoring program.
 
-We also fit an otherwise identical model that only included the BBS data. We compared predicted population trajectories and trends for the region and time-period where the species-specific survey was conducted to contrast the signals of population change in the two programs. 
+We also fit an otherwise identical model that only included the BBS data. We compared predicted population trajectories and trends for the region and time-period where the species-specific survey was conducted to contrast the signals of population change in the two programs.
 
 ## Results
 
-Trends, trajectories, comparison with BBS-only model, different estimates of observer, site, and dispersion.
+Integrating information from the two programs has little effect on the survey-wide long-term population trends and trajectories, and essentially no effect on the trends and trajectories outside of the region where the species-specific survey contributes information. Trends and trajectories in the Appalachian region since the species-specific survey began (2009) show more variation in space and time.  
 
-![](figures/images/first_difference_trajectory.png)
+![](figures/images/trajectory_comparison.png)
 
-![](figures/images/first_difference_trend_maps.png)
+![](figures/images/trend_comparison.png)
+
+In addition, integrating information from the two surveys improves the precision of the trend estimates in the Appalachian regions. 
+
+![](figures/images/CI_halfwidth.png)
 
 ## Discussion
 

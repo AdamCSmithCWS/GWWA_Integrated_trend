@@ -45,7 +45,8 @@ data {
   array[n_Iy2] int Iy2;//indexing vector - indices of years after fixed_year
   // a vector of zeros to fill fixed beta values for fixed_year
   vector[n_strata] zero_betas;
-  
+  array[n_years_m1] int<lower=0> y_2020; //indicators for 2020 = 0 if 2020 and missing if fixed_year
+
   
   // array data to estimate annual indices using only observer-site combinations that are in each stratum
   array[n_strata] int<lower=0> n_obs_sites_strata; // number of observer-site combinations in each stratum
